@@ -311,3 +311,31 @@ Product metadata is held in:
 
 This stage continues the move away from developer-facing configuration toward an
 end-user distributable product.
+
+## Stage 3.0a — Windows Application Shell
+
+Matchday Desktop can now run inside an Electron desktop shell rather than a normal
+browser window.
+
+Development launch:
+
+    RUN-DESKTOP-DEV.bat
+
+Full-screen launch:
+
+    RUN-DESKTOP-FULLSCREEN.bat
+
+The shell deliberately remains thin. Football data, club catalogue, themes and the
+canonical UI continue to come from the deployed Matchday Desktop service.
+
+Desktop controls:
+
+- F11 toggles full screen.
+- Escape leaves full screen.
+- External links are opened in the user's normal browser.
+
+The Electron renderer has Node integration disabled, context isolation enabled and
+sandboxing enabled.
+
+Stage 3.0a is not yet the Windows screensaver implementation. That behaviour belongs
+to Stage 3.0b after the application-shell boundary has been proven.

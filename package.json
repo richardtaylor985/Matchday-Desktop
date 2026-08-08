@@ -1,15 +1,38 @@
 {
   "name": "matchday-desktop",
-  "version": "0.1.0",
+  "version": "3.0.0",
   "private": true,
-  "engines": {
-    "node": ">=20"
-  },
+  "description": "Matchday Desktop Windows shell",
+  "main": "desktop/main.js",
   "scripts": {
-    "dev": "vercel dev",
-    "check:screensaver": "node --check apps/sky-blues-screensaver/server.js && node --check apps/sky-blues-screensaver/app.js"
+    "desktop": "electron .",
+    "desktop:dev": "electron . --dev",
+    "build:win": "electron-builder --win nsis"
   },
   "devDependencies": {
-    "vercel": "^46.0.0"
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.matchdaydesktop.app",
+    "productName": "Matchday Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "desktop/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }
