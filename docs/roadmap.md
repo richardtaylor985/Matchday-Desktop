@@ -14,6 +14,8 @@
 
 ### Stage 2.5 — Cloud boundary
 
+Stage 2.5b: full Coventry dashboard aggregation now runs in Vercel.
+
 Goal: remove upstream football credentials from the installed screensaver.
 
 ## Future

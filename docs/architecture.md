@@ -51,3 +51,24 @@ Change the screensaver to consume our Vercel API only.
 
 ### 2.6
 Generalise club configuration and themes.
+
+
+## Stage 2.5b cloud dashboard contract
+
+The first complete cloud dashboard endpoint is:
+
+    GET /api/v1/clubs/coventry-city-dashboard
+
+It now owns:
+
+- next fixture lookup
+- next 3 fixture selection
+- Coventry Last 5
+- opponent Last 5
+- 2026/27 standings
+- venue fallback
+- matchday/live/full-time state detection
+- adaptive cache guidance
+- diagnostics
+
+The screensaver still uses the local server until Stage 2.5d.

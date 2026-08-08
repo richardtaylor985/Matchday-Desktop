@@ -79,3 +79,44 @@ This avoids breaking the known-good client while the Vercel backend is being int
 
 From this point forward, Git history replaces numbered folders as the primary source
 of version history. Stage names can still be used in commits/tags for milestones.
+
+
+## Stage 2.5b
+
+The complete Coventry dashboard aggregation logic has now moved into Vercel.
+
+Deploy this commit, then test:
+
+    /api/v1/clubs/coventry-city-dashboard
+
+The JSON should include:
+
+- `nextMatch`
+- `featuredMatch`
+- `matchState`
+- `refreshAfterSeconds`
+- `nextThree`
+- `cityLast5`
+- `opponentLast5`
+- `standings`
+- `diagnostics`
+
+### Cloud test harness
+
+You can test match states without changing server configuration:
+
+    /api/v1/clubs/coventry-city-dashboard?testState=MATCHDAY
+
+    /api/v1/clubs/coventry-city-dashboard?testState=LIVE&homeScore=1&awayScore=2&minute=67
+
+    /api/v1/clubs/coventry-city-dashboard?testState=FULL_TIME&homeScore=1&awayScore=2
+
+Test-mode responses use `Cache-Control: no-store`.
+
+### Important
+
+The screensaver client has deliberately NOT been migrated yet.
+
+Stage 2.5c will stabilise/refine the cloud JSON contract.
+Stage 2.5d will point the installed client at Vercel and remove its need for the
+football-data.org API key.
