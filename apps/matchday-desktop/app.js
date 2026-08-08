@@ -424,21 +424,20 @@ function updateCountdown() {
 
 function updateClock() {
   const now = new Date();
+  const settings =
+    typeof loadUserSettings === "function"
+      ? loadUserSettings()
+      : { clockFormat: "24", showSeconds: false };
 
-  document.getElementById("heroTime").textContent =
-    now.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
+  const clock = document.getElementById("clock");
+  if (!clock) return;
 
-  document.getElementById("heroDate").textContent =
-    now.toLocaleDateString("en-GB", {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
-      year: "numeric"
-    }).toUpperCase();
+  clock.textContent = now.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: settings.showSeconds ? "2-digit" : undefined,
+    hour12: settings.clockFormat === "12"
+  });
 }
 
 function initialiseLoadingState() {
@@ -617,6 +616,7 @@ async function initialiseSelectedClub() {
 }
 
 async function bootMatchdayDesktop() {
+  loadProductMetadata();
   try {
     const club = await resolveClubSelection();
 

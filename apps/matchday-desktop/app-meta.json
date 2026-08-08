@@ -1,0 +1,7 @@
+{
+  "name": "Matchday Desktop",
+  "version": "2.7b",
+  "channel": "preview",
+  "apiContract": "dashboard-v1",
+  "clubsContract": "clubs-v1"
+}

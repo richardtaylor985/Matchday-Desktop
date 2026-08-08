@@ -600,3 +600,124 @@ body.state-full-time .match-state-banner strong {
   opacity: 1;
   color: #fff;
 }
+
+
+.settings-button {
+  position: fixed;
+  z-index: 850;
+  right: 16px;
+  bottom: 16px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 6px;
+  padding: 6px 9px;
+  background: rgba(0,0,0,.38);
+  color: rgba(255,255,255,.34);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  cursor: pointer;
+  opacity: .25;
+  transition: opacity .15s ease;
+}
+
+.settings-button:hover {
+  opacity: 1;
+  color: #fff;
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(8px);
+}
+
+.settings-overlay[hidden] {
+  display: none;
+}
+
+.settings-card {
+  width: min(480px, calc(100vw - 40px));
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 14px;
+  padding: 26px;
+  background: #0b1119;
+  color: #fff;
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+}
+
+.settings-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+.settings-heading h2 {
+  margin: 4px 0 0;
+  font-size: 30px;
+}
+
+.settings-kicker {
+  font-size: 10px;
+  letter-spacing: .16em;
+  color: #8798a9;
+  font-weight: 800;
+}
+
+.settings-close {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.settings-group {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 52px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.settings-group select,
+.settings-group button {
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: rgba(255,255,255,.05);
+  color: #fff;
+}
+
+.settings-group small {
+  grid-column: 1 / -1;
+  color: #9eb0c0;
+  padding-bottom: 8px;
+}
+
+.settings-meta {
+  margin-top: 18px;
+  color: #8191a0;
+  font-size: 11px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.settings-actions button {
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  cursor: pointer;
+}

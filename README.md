@@ -292,3 +292,22 @@ The same client can also be launched directly:
 
 Standalone Coventry and Arsenal builds remain temporarily for compatibility and
 regression testing.
+
+## Stage 2.7b — Productisation & Settings
+
+The unified client now includes a discreet Settings panel with:
+
+- club switching;
+- 12/24-hour clock preference;
+- optional clock seconds;
+- cloud API connectivity test;
+- installed application version.
+
+User preferences are stored locally and do not require an account.
+
+Product metadata is held in:
+
+    apps/matchday-desktop/app-meta.json
+
+This stage continues the move away from developer-facing configuration toward an
+end-user distributable product.

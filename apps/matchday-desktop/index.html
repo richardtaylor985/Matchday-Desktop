@@ -108,20 +108,65 @@
   </main>
 
   </div>
-
-  <button
-    id="changeClubButton"
-    class="change-club-button"
+<button
+    id="settingsButton"
+    class="settings-button"
     type="button"
-    onclick="clearClubSelection()"
-    title="Change club"
+    onclick="openSettings()"
+    title="Settings"
   >
-    CHANGE CLUB
+    SETTINGS
   </button>
+
+  <section id="settingsPanel" class="settings-overlay" hidden>
+    <div class="settings-card">
+      <div class="settings-heading">
+        <div>
+          <div class="settings-kicker">MATCHDAY DESKTOP</div>
+          <h2>Settings</h2>
+        </div>
+        <button class="settings-close" onclick="closeSettings()" type="button">×</button>
+      </div>
+
+      <div class="settings-group">
+        <label for="settingClockFormat">Clock format</label>
+        <select id="settingClockFormat">
+          <option value="24">24-hour</option>
+          <option value="12">12-hour</option>
+        </select>
+      </div>
+
+      <div class="settings-group settings-check">
+        <label for="settingShowSeconds">Show seconds</label>
+        <input id="settingShowSeconds" type="checkbox">
+      </div>
+
+      <div class="settings-group">
+        <span>Club</span>
+        <button type="button" onclick="clearClubSelection()">CHANGE CLUB</button>
+      </div>
+
+      <div class="settings-group">
+        <span>Connection</span>
+        <button type="button" onclick="testApiConnection()">TEST CONNECTION</button>
+        <small id="connectionTestResult"></small>
+      </div>
+
+      <div class="settings-meta">
+        Version <strong id="settingsVersion">…</strong>
+      </div>
+
+      <div class="settings-actions">
+        <button type="button" onclick="closeSettings()">CANCEL</button>
+        <button type="button" onclick="applySettings()">SAVE</button>
+      </div>
+    </div>
+  </section>
 
   <script src="config.js"></script>
   <script src="theme.js"></script>
   <script src="club-selector.js"></script>
+  <script src="settings.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

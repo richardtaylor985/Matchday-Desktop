@@ -1,40 +1,28 @@
-# Matchday Desktop — Stage 2.7a Unified Client
+# Matchday Desktop — Stage 2.7b
 
-This is the first single distributable client for multiple clubs.
+This is the canonical multi-club Matchday Desktop client.
 
-## Run
+## First run
 
-Double-click:
+Launch `RUN-MATCHDAY-DESKTOP.bat` and choose a club.
 
-    RUN-MATCHDAY-DESKTOP.bat
+## Settings
 
-On first launch, choose a supported club.
+Move the pointer to the bottom-right and select `SETTINGS`.
 
-The selection is remembered locally.
+Settings currently provide:
 
-To switch clubs, use the discreet `CHANGE CLUB` control in the bottom-right corner.
+- Change Club
+- 12/24-hour clock
+- Show/hide seconds
+- Test cloud connection
+- Application version
 
-## Direct club launch
-
-You can also launch directly with a query parameter:
-
-    index.html?club=coventry-city
-    index.html?club=arsenal
+Preferences are stored locally in the browser.
 
 ## Supported clubs
 
-The selector reads the supported club list from:
+- Coventry City
+- Arsenal
 
-    https://matchday-desktop.vercel.app/api/v1/clubs
-
-The football dashboard still uses:
-
-    /api/v1/clubs/{club}/dashboard
-
-## Current themes
-
-- Coventry City -> sky-blues
-- Arsenal -> classic-arsenal
-
-The existing standalone Coventry and Arsenal apps remain in the repository for
-compatibility and regression testing.
+Both clubs use the same generic client and cloud dashboard engine.
