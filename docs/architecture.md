@@ -102,3 +102,18 @@ Football identity and client theme identity are now represented separately throu
        Shared Dashboard Builder
 
 The old Coventry-specific route is retained only as a compatibility adapter.
+
+## Stage 2.6c presentation boundary
+
+    Club Registry
+       = football identity
+       = provider team ID
+       = competition/season
+
+    Theme Package
+       = colours
+       = crest override
+       = hero artwork
+       = visual identity
+
+The dashboard engine does not own club-specific presentation assets.

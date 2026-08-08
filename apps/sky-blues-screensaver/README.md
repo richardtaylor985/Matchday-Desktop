@@ -51,3 +51,8 @@ Edit `config.js` and set `testState` to:
 
 No client visual changes are required. LIVE venue and Last 5 reliability are fixed
 server-side through the optimized Matchday Desktop API.
+
+## Stage 2.6c theme package
+
+The existing Coventry appearance now comes from `themes/sky-blues/theme.json`.
+No visual redesign is intended; this is an architectural refactor only.

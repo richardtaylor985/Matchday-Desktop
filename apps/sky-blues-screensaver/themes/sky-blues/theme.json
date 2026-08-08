@@ -1,0 +1,19 @@
+{
+  "key": "sky-blues",
+  "club": "coventry-city",
+  "displayName": "Coventry City",
+  "colors": {
+    "sky": "#55bff4",
+    "skySoft": "#8dd8ff",
+    "backgroundTop": "#04182b",
+    "backgroundBottom": "#021322",
+    "panelTop": "rgba(2,17,31,.96)",
+    "panelBottom": "rgba(3,26,45,.97)",
+    "muted": "#a7bac8",
+    "line": "rgba(92,187,237,.26)"
+  },
+  "assets": {
+    "crest": "themes/sky-blues/assets/crest.png",
+    "hero": "themes/sky-blues/assets/hero.jpg"
+  }
+}

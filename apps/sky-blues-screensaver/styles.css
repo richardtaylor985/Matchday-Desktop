@@ -1,4 +1,8 @@
 :root {
+  --theme-bg-top: #04182b;
+  --theme-bg-bottom: #021322;
+  --theme-panel-top: rgba(2,17,31,.96);
+  --theme-panel-bottom: rgba(3,26,45,.97);
   --sky: #55bff4;
   --sky-soft: #86d2f4;
   --navy: #031426;
@@ -39,7 +43,7 @@ body { overflow: hidden; }
   background-color: #0a3556;
   background-image:
     linear-gradient(90deg, rgba(3,20,38,.06), rgba(3,20,38,.12)),
-    url("assets/george-john-smoke-hero.jpg");
+    var(--hero-image);
   background-position: center center, top 54%;
   background-size: 100% 100%, 100% auto;
   background-repeat: no-repeat;
@@ -81,7 +85,7 @@ body { overflow: hidden; }
   display: grid;
   grid-template-rows: 29% 23% 48%;
   gap: 8px;
-  background: linear-gradient(180deg, #04182b, #021322);
+  background: linear-gradient(180deg, var(--theme-bg-top), var(--theme-bg-bottom));
 }
 
 .card {
@@ -89,7 +93,7 @@ body { overflow: hidden; }
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(2,17,31,.96), rgba(3,26,45,.97));
+  background: linear-gradient(180deg, var(--theme-panel-top), var(--theme-panel-bottom));
   box-shadow: inset 0 0 34px rgba(0,0,0,.12);
 }
 

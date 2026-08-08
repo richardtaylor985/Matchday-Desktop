@@ -216,3 +216,29 @@ The previous endpoint remains as a compatibility alias:
     /api/v1/clubs/coventry-city-dashboard
 
 The Coventry client has been updated to use the new generic route.
+
+## Stage 2.6c — Theme & Asset Abstraction
+
+Coventry-specific presentation assets are now packaged as a theme:
+
+    apps/sky-blues-screensaver/themes/sky-blues/
+      theme.json
+      assets/
+        crest.png
+        hero.jpg
+
+The generic client loads its theme using the public `config.js` value:
+
+    theme: "sky-blues"
+
+The theme controls:
+
+- club presentation identity
+- primary/secondary colours
+- panel/background colours
+- crest asset
+- hero asset
+
+Football identity remains separate in the server-side club registry.
+
+The Coventry screen is intentionally visually unchanged in Stage 2.6c.

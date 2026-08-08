@@ -144,7 +144,7 @@ function renderNextThree(fixtures) {
     }).toUpperCase();
 
     const crestSrc = isCoventry(teamName(opponent))
-      ? "assets/coventry-city-crest.png"
+      ? themeAsset("crest", "themes/sky-blues/assets/crest.png")
       : (opponent?.crest || "");
 
     row.innerHTML = `
@@ -279,7 +279,7 @@ function renderDashboard(data) {
   setImage(
     "homeCrest",
     isCoventry(teamName(home))
-      ? "assets/coventry-city-crest.png"
+      ? themeAsset("crest", "themes/sky-blues/assets/crest.png")
       : home.crest,
     ""
   );
@@ -287,7 +287,7 @@ function renderDashboard(data) {
   setImage(
     "awayCrest",
     isCoventry(teamName(away))
-      ? "assets/coventry-city-crest.png"
+      ? themeAsset("crest", "themes/sky-blues/assets/crest.png")
       : away.crest,
     ""
   );
@@ -539,10 +539,31 @@ async function loadLiveData() {
   }
 }
 
+
+async function initialiseTheme() {
+  try {
+    const theme = await loadMatchdayTheme();
+
+    if (theme?.assets?.hero) {
+      document.documentElement.style.setProperty(
+        "--hero-image",
+        `url("${theme.assets.hero}")`
+      );
+    }
+
+    console.log("Loaded theme:", theme?.key || "unknown");
+  } catch (error) {
+    console.warn("Theme loading failed; using CSS defaults:", error);
+  }
+}
+
 initialiseLoadingState();
 updateCountdown();
 updateClock();
-loadLiveData();
+
+initialiseTheme().finally(() => {
+  loadLiveData();
+});
 
 setInterval(updateCountdown, 1000);
 setInterval(updateClock, 1000);
