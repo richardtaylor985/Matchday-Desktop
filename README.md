@@ -169,3 +169,29 @@ A normal dashboard request should typically require about 4 upstream calls:
 4. opponent match history
 
 If the match payload already contains a venue, the count can be lower.
+
+## Stage 2.6a — Generic Club Registry
+
+The cloud API no longer hard-codes Coventry's provider team ID or identity inside
+the dashboard aggregation logic.
+
+New shared modules:
+
+    api/v1/_lib/clubs.js
+    api/v1/_lib/dashboard.js
+
+`clubs.js` owns club identity/configuration.
+
+`dashboard.js` contains reusable football-data.org aggregation logic.
+
+The Coventry endpoint is now only a thin adapter that resolves:
+
+    getClubConfig("coventry-city")
+
+and passes that configuration into the shared dashboard builder.
+
+The response remains `dashboard-v1`, so the existing Coventry client requires no
+changes.
+
+This is intentionally still a one-club registry. Stage 2.6d will add a second club
+only after the abstraction is proven.

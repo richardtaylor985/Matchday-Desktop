@@ -72,3 +72,19 @@ It now owns:
 - diagnostics
 
 The screensaver still uses the local server until Stage 2.5d.
+
+## Stage 2.6a club abstraction
+
+    Club Route
+       |
+       v
+    Club Registry
+       |
+       v
+    Shared Dashboard Builder
+       |
+       v
+    football-data.org
+
+Football identity and client theme identity are now represented separately through
+`providerTeamId` and `themeKey`.
