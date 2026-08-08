@@ -1,0 +1,15 @@
+{
+  "name": "matchday-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "check:screensaver": "node --check apps/sky-blues-screensaver/server.js && node --check apps/sky-blues-screensaver/app.js"
+  },
+  "devDependencies": {
+    "vercel": "^46.0.0"
+  }
+}

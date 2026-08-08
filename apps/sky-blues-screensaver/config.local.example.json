@@ -1,0 +1,10 @@
+{
+  "footballDataApiKey": "PASTE-YOUR-API-KEY-HERE",
+  "testMode": {
+    "enabled": false,
+    "state": "MATCHDAY",
+    "homeScore": 1,
+    "awayScore": 2,
+    "minute": 67
+  }
+}
