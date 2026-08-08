@@ -133,3 +133,24 @@ The dashboard engine does not own club-specific presentation assets.
 
 The client code is now club-generic. Selected-club identity is resolved from the
 dashboard response rather than through Coventry-specific name checks.
+
+## Stage 2.7a distribution model
+
+             Unified Client
+                  |
+          Club selection
+                  |
+         /api/v1/clubs
+                  |
+          club + theme key
+                  |
+       Generic dashboard route
+                  |
+        Shared dashboard engine
+
+A new supported club now requires primarily:
+
+1. one server registry entry;
+2. one theme package.
+
+A separate client application is no longer architecturally required.

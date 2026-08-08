@@ -271,3 +271,24 @@ A deployed test landing page is available at:
 and the Arsenal client at:
 
     /apps/arsenal-screensaver/index.html
+
+## Stage 2.7a — Unified Club Selector & Generic Client
+
+A new single multi-club client now exists:
+
+    apps/matchday-desktop/
+
+On first run the user chooses a supported club. The choice is remembered in local
+browser storage.
+
+Supported clubs are supplied by the cloud API:
+
+    GET /api/v1/clubs
+
+The same client can also be launched directly:
+
+    ?club=coventry-city
+    ?club=arsenal
+
+Standalone Coventry and Arsenal builds remain temporarily for compatibility and
+regression testing.
