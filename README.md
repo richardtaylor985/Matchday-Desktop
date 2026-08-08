@@ -195,3 +195,24 @@ changes.
 
 This is intentionally still a one-club registry. Stage 2.6d will add a second club
 only after the abstraction is proven.
+
+## Stage 2.6b — Generic Dashboard Routing
+
+The preferred dashboard endpoint is now:
+
+    GET /api/v1/clubs/{club}/dashboard
+
+For Coventry City:
+
+    GET /api/v1/clubs/coventry-city/dashboard
+
+The route resolves `{club}` through the shared club registry and passes the resulting
+configuration into the shared dashboard builder.
+
+Unknown clubs return a clean HTTP 404 response.
+
+The previous endpoint remains as a compatibility alias:
+
+    /api/v1/clubs/coventry-city-dashboard
+
+The Coventry client has been updated to use the new generic route.

@@ -462,7 +462,7 @@ function buildDashboardUrl() {
   }
 
   const url = new URL(
-    `${base}/api/v1/clubs/${encodeURIComponent(club)}-dashboard`
+    `${base}/api/v1/clubs/${encodeURIComponent(club)}/dashboard`
   );
 
   if (config.testState) {

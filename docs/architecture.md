@@ -88,3 +88,17 @@ The screensaver still uses the local server until Stage 2.5d.
 
 Football identity and client theme identity are now represented separately through
 `providerTeamId` and `themeKey`.
+
+## Stage 2.6b generic route
+
+    /api/v1/clubs/{club}/dashboard
+                 |
+                 v
+          Club Registry lookup
+                 |
+          unknown -> 404
+                 |
+                 v
+       Shared Dashboard Builder
+
+The old Coventry-specific route is retained only as a compatibility adapter.
