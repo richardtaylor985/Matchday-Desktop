@@ -15,5 +15,7 @@
   "assets": {
     "crest": "themes/sky-blues/assets/crest.png",
     "hero": "themes/sky-blues/assets/hero.jpg"
-  }
+  },
+  "pageTitle": "Sky Blues Screensaver",
+  "heroAriaLabel": "Coventry City tribute visual"
 }

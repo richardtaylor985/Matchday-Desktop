@@ -1,0 +1,21 @@
+{
+  "key": "classic-arsenal",
+  "club": "arsenal",
+  "displayName": "Arsenal",
+  "pageTitle": "Arsenal Matchday Screensaver",
+  "heroAriaLabel": "Arsenal Thierry Henry tribute visual",
+  "colors": {
+    "sky": "#DA291C",
+    "skySoft": "#C0A060",
+    "backgroundTop": "#0B1320",
+    "backgroundBottom": "#070A0F",
+    "panelTop": "rgba(11,13,18,.97)",
+    "panelBottom": "rgba(24,24,27,.97)",
+    "muted": "#C8C8C8",
+    "line": "rgba(218,41,28,.38)"
+  },
+  "assets": {
+    "crest": "themes/classic-arsenal/assets/crest.png",
+    "hero": "themes/classic-arsenal/assets/hero.jpg"
+  }
+}

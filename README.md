@@ -242,3 +242,32 @@ The theme controls:
 Football identity remains separate in the server-side club registry.
 
 The Coventry screen is intentionally visually unchanged in Stage 2.6c.
+
+## Stage 2.6d — Arsenal multi-club proof
+
+Arsenal has been added to the shared club registry:
+
+    slug: arsenal
+    providerTeamId: 57
+    themeKey: classic-arsenal
+
+A second client app now exists:
+
+    apps/arsenal-screensaver/
+
+Both Coventry and Arsenal use the same:
+
+- generic `/api/v1/clubs/{club}/dashboard` route;
+- shared dashboard engine;
+- shared generic client logic;
+- matchday/live/full-time behaviour.
+
+Only club configuration and theme assets differ.
+
+A deployed test landing page is available at:
+
+    /apps/
+
+and the Arsenal client at:
+
+    /apps/arsenal-screensaver/index.html

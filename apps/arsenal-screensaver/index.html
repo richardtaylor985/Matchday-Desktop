@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arsenal Matchday Screensaver</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="screensaver">
+    <section class="hero" aria-label="Arsenal Thierry Henry tribute visual">
+      <div class="hero-shade"></div>
+      <div class="hero-clock">
+        <span id="heroTime">--:--:--</span>
+        <span id="heroDate">--</span>
+      </div>
+    </section>
+
+    <section class="dashboard">
+      <section class="card next-match">
+        <h2 id="matchCardTitle">NEXT MATCH</h2>
+        <div class="match-grid">
+          <div class="club">
+            <img id="homeCrest" src="themes/classic-arsenal/assets/crest.png" alt="Arsenal crest">
+            <strong id="homeTeam">Arsenal</strong>
+          </div>
+
+          <div class="versus">VS</div>
+
+          <div class="club">
+            <img id="awayCrest" src="" alt="Opponent crest">
+            <strong id="awayTeam">Opponent</strong>
+          </div>
+
+          <div class="fixture-meta">
+            <div><span class="icon">▣</span><span id="matchDate">Friday 21 August 2026</span></div>
+            <div><span class="icon">◷</span><span id="matchTime">20:00</span></div>
+            <div><span class="icon">▱</span><span id="matchVenue">Emirates Stadium</span></div>
+            <div><span class="icon">♜</span><span>Premier League</span></div>
+          </div>
+        </div>
+
+        <div id="matchStateBanner" class="match-state-banner" hidden>
+          <span id="matchStateText">MATCHDAY</span>
+          <strong id="matchScoreText"></strong>
+        </div>
+
+        <div class="countdown-row">
+          <span id="countdownLabel" class="countdown-label">NEXT MATCH IN</span>
+          <div><strong id="days">00</strong><span>DAYS</span></div>
+          <div><strong id="hours">00</strong><span>HRS</span></div>
+          <div><strong id="minutes">00</strong><span>MINS</span></div>
+          <div><strong id="seconds">00</strong><span>SECS</span></div>
+        </div>
+      </section>
+
+      <section class="card form-card">
+        <h2>LAST 5 RESULTS</h2>
+        <div class="form-columns">
+          <div>
+            <h3 id="cityFormTitle">ARSENAL</h3>
+            <div id="cityResults" class="results"></div>
+          </div>
+          <div>
+            <h3 id="oppFormTitle">OPPONENT</h3>
+            <div id="oppResults" class="results"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card table-card">
+        <h2>PREMIER LEAGUE TABLE</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>POS</th>
+              <th>CLUB</th>
+              <th>P</th>
+              <th>W</th>
+              <th>D</th>
+              <th>L</th>
+              <th>GD</th>
+              <th>PTS</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+
+        <div id="nextThreePanel" class="next-three-panel">
+          <div class="next-three-heading">NEXT 3 FIXTURES</div>
+          <div id="nextThreeFixtures" class="next-three-fixtures"></div>
+        </div>
+      </section>
+      <div id="dataStatus" class="data-status">CONNECTING…</div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="theme.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

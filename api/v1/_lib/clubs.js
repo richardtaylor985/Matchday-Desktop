@@ -8,6 +8,17 @@ export const CLUBS = {
     competitionCode: "PL",
     seasonStartYear: 2026,
     themeKey: "sky-blues"
+  },
+
+  "arsenal": {
+    slug: "arsenal",
+    providerTeamId: 57,
+    displayName: "Arsenal",
+    shortName: "Arsenal",
+    tla: "ARS",
+    competitionCode: "PL",
+    seasonStartYear: 2026,
+    themeKey: "classic-arsenal"
   }
 };
 

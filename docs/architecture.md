@@ -117,3 +117,19 @@ The old Coventry-specific route is retained only as a compatibility adapter.
        = visual identity
 
 The dashboard engine does not own club-specific presentation assets.
+
+## Stage 2.6d multi-club proof
+
+                 Shared API
+                    |
+            Shared Dashboard Engine
+              /             \
+             /               \
+      Coventry config      Arsenal config
+           |                    |
+      Sky Blues theme      Classic Arsenal theme
+           |                    |
+      Coventry client       Arsenal client
+
+The client code is now club-generic. Selected-club identity is resolved from the
+dashboard response rather than through Coventry-specific name checks.

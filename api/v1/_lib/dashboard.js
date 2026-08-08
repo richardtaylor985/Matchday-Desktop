@@ -438,7 +438,7 @@ export async function buildDashboard(req, clubConfig) {
 
   return {
     service: "matchday-desktop-api",
-    version: "2.6c",
+    version: "2.6d",
     contract: "dashboard-v1",
     club: clubConfig.slug,
     generatedAt: new Date().toISOString(),
