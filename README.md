@@ -128,3 +128,15 @@ It no longer requires localhost:8787, Node.js, config.local.json, or a local
 football-data.org API token.
 
 The Vercel dashboard endpoint now includes CORS headers for local/static clients.
+
+## Stage 2.5d — Release hardening
+
+Stage 2.5 is now complete.
+
+2.5d removes the obsolete local Node.js proxy from the distributable client,
+adds browser-side last-known-good caching, improves offline/error behaviour, and
+marks the Vercel dashboard payload as the stable `dashboard-v1` contract.
+
+The client contains no upstream football-data.org credential.
+
+Next milestone: Stage 2.6 — multi-club platform foundations.

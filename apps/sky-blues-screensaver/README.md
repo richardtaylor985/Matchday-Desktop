@@ -1,14 +1,48 @@
-# Sky Blues Screensaver — Stage 2.5c Cloud Client
+# Sky Blues Screensaver — Stage 2.5d
 
-Run `RUN-SCREENSAVER.bat`.
+Stage 2.5d completes the cloud migration and release-hardening pass.
 
-The client now calls:
+## Run
+
+Double-click:
+
+    RUN-SCREENSAVER.bat
+
+The client talks directly to the production Matchday Desktop API:
 
     https://matchday-desktop.vercel.app/api/v1/clubs/coventry-city-dashboard
 
-No Node.js process or football-data.org API key is required on the client PC.
+No Node.js server and no football-data.org API key are required on the client PC.
+
+## Offline behaviour
+
+Every successful dashboard response is saved locally in the browser.
+
+If the cloud API later becomes unavailable, the screensaver displays the last
+known dashboard and clearly labels it:
+
+    OFFLINE • LAST KNOWN DATA • <AGE>
+
+If the client has never received a successful response, it displays:
+
+    OFFLINE • NO CACHED DATA
+
+## API contract
+
+The cloud endpoint now identifies the stable Stage 2 dashboard contract as:
+
+    dashboard-v1
+
+This gives future clients a stable contract while the server implementation can
+continue to evolve.
 
 ## Test states
 
-Edit `config.js` and set `testState` to MATCHDAY, LIVE, FULL_TIME, or null.
-For LIVE/FULL_TIME, `testHomeScore`, `testAwayScore` and `testMinute` are available.
+Edit `config.js` and set `testState` to:
+
+- "MATCHDAY"
+- "LIVE"
+- "FULL_TIME"
+- null
+
+`null` restores normal automatic behaviour.

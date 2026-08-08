@@ -31,3 +31,16 @@ Distribution / update infrastructure.
 
 ### Stage 4.0
 Commercial-ready product architecture, subject to data and branding rights.
+
+### Stage 2.5d — Complete
+
+- Cloud client confirmed
+- Legacy local proxy removed
+- Last-known-good offline cache added
+- Dashboard API contract frozen as `dashboard-v1`
+- End-user football-data.org credential removed
+
+### Stage 2.6 — Next
+
+Multi-club configuration, reusable branding/assets and distributable product
+foundations.

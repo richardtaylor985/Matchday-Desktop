@@ -505,7 +505,8 @@ async function buildDashboard(req) {
 
   return {
     service: "matchday-desktop-api",
-    version: "2.5c",
+    version: "2.5d",
+    contract: "dashboard-v1",
     club: "coventry-city",
     generatedAt: new Date().toISOString(),
     season: PREMIER_LEAGUE_SEASON,
@@ -549,6 +550,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("X-Matchday-Contract", "dashboard-v1");
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -557,7 +559,7 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       service: "matchday-desktop-api",
-      version: "2.5c",
+      version: "2.5d",
       error: "Method not allowed"
     });
   }
@@ -581,7 +583,7 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       service: "matchday-desktop-api",
-      version: "2.5c",
+      version: "2.5d",
       club: "coventry-city",
       error: error.message
     });

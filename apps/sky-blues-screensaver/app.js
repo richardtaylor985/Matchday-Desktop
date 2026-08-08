@@ -406,6 +406,52 @@ function initialiseLoadingState() {
   setDataStatus("CONNECTING…");
 }
 
+
+const MATCHDAY_CACHE_KEY = "matchday-desktop:last-dashboard:v1";
+
+function saveDashboardCache(payload) {
+  try {
+    localStorage.setItem(
+      MATCHDAY_CACHE_KEY,
+      JSON.stringify({
+        savedAt: new Date().toISOString(),
+        payload
+      })
+    );
+  } catch (error) {
+    console.warn("Unable to save dashboard cache:", error);
+  }
+}
+
+function loadDashboardCache() {
+  try {
+    const raw = localStorage.getItem(MATCHDAY_CACHE_KEY);
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw);
+    if (!cached || !cached.payload || !cached.savedAt) return null;
+
+    return cached;
+  } catch (error) {
+    console.warn("Unable to read dashboard cache:", error);
+    return null;
+  }
+}
+
+function cacheAgeLabel(savedAt) {
+  const ageMs = Math.max(0, Date.now() - new Date(savedAt).getTime());
+  const minutes = Math.floor(ageMs / 60000);
+
+  if (minutes < 1) return "<1 MIN OLD";
+  if (minutes < 60) return `${minutes} MIN OLD`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} HR${hours === 1 ? "" : "S"} OLD`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} DAY${days === 1 ? "" : "S"} OLD`;
+}
+
 function buildDashboardUrl() {
   const config = window.MATCHDAY_CONFIG || {};
   const base = String(config.apiBaseUrl || "").replace(/\/+$/, "");
@@ -436,6 +482,7 @@ async function loadLiveData() {
     });
 
     const payload = await response.json();
+    saveDashboardCache(payload);
 
     if (!response.ok) {
       throw new Error(
