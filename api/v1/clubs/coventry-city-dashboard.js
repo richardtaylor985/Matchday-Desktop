@@ -505,7 +505,7 @@ async function buildDashboard(req) {
 
   return {
     service: "matchday-desktop-api",
-    version: "2.5b",
+    version: "2.5c",
     club: "coventry-city",
     generatedAt: new Date().toISOString(),
     season: PREMIER_LEAGUE_SEASON,
@@ -546,6 +546,22 @@ async function buildDashboard(req) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "GET") {
+    return res.status(405).json({
+      service: "matchday-desktop-api",
+      version: "2.5c",
+      error: "Method not allowed"
+    });
+  }
+
   try {
     const data = await buildDashboard(req);
 
@@ -565,7 +581,7 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       service: "matchday-desktop-api",
-      version: "2.5b",
+      version: "2.5c",
       club: "coventry-city",
       error: error.message
     });

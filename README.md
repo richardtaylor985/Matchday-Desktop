@@ -120,3 +120,11 @@ The screensaver client has deliberately NOT been migrated yet.
 Stage 2.5c will stabilise/refine the cloud JSON contract.
 Stage 2.5d will point the installed client at Vercel and remove its need for the
 football-data.org API key.
+
+## Stage 2.5c — Cloud Client Migration
+
+The Coventry client now calls the production Vercel dashboard API directly.
+It no longer requires localhost:8787, Node.js, config.local.json, or a local
+football-data.org API token.
+
+The Vercel dashboard endpoint now includes CORS headers for local/static clients.

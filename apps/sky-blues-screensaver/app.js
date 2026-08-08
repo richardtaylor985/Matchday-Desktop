@@ -340,16 +340,13 @@ function renderDashboard(data) {
 
   if (data.testModeActive) {
     setDataStatus(`TEST MODE • ${data.matchState}`, "warning");
-  } else if (data.source === "live") {
+  } else {
     setDataStatus(
-      warningCount ? `LIVE • ${warningCount} DATA WARNING${warningCount === 1 ? "" : "S"}` : "LIVE DATA",
+      warningCount
+        ? `CLOUD DATA • ${warningCount} WARNING${warningCount === 1 ? "" : "S"}`
+        : "CLOUD DATA",
       warningCount ? "warning" : "live"
     );
-  } else if (data.source === "cache") {
-    const ageMinutes = Math.floor((data.cacheAgeSeconds || 0) / 60);
-    setDataStatus(`CACHED • ${ageMinutes} MIN OLD`, "live");
-  } else if (data.source === "stale-cache") {
-    setDataStatus("OFFLINE • USING LAST KNOWN DATA", "warning");
   }
 }
 
@@ -409,9 +406,32 @@ function initialiseLoadingState() {
   setDataStatus("CONNECTING…");
 }
 
+function buildDashboardUrl() {
+  const config = window.MATCHDAY_CONFIG || {};
+  const base = String(config.apiBaseUrl || "").replace(/\/+$/, "");
+  const club = config.club || "coventry-city";
+
+  if (!base) {
+    throw new Error("MATCHDAY_CONFIG.apiBaseUrl is not configured");
+  }
+
+  const url = new URL(
+    `${base}/api/v1/clubs/${encodeURIComponent(club)}-dashboard`
+  );
+
+  if (config.testState) {
+    url.searchParams.set("testState", config.testState);
+    url.searchParams.set("homeScore", String(config.testHomeScore ?? 1));
+    url.searchParams.set("awayScore", String(config.testAwayScore ?? 2));
+    url.searchParams.set("minute", String(config.testMinute ?? 67));
+  }
+
+  return url.toString();
+}
+
 async function loadLiveData() {
   try {
-    const response = await fetch("/api/dashboard", {
+    const response = await fetch(buildDashboardUrl(), {
       cache: "no-store"
     });
 
@@ -441,7 +461,7 @@ async function loadLiveData() {
       console.groupEnd();
     }
 
-    console.log("Dashboard data source:", payload.source);
+    console.log("Dashboard API:", buildDashboardUrl());
     console.log("Match state:", payload.matchState);
     scheduleNextRefresh(payload.refreshAfterSeconds);
   } catch (err) {
@@ -452,7 +472,7 @@ async function loadLiveData() {
         "Football data unavailable";
       document.getElementById("matchTime").textContent = "—";
       document.getElementById("matchVenue").textContent =
-        "Check local server / API connection";
+        "Check internet / Matchday API connection";
 
       renderEmptyResults(
         "cityResults",
