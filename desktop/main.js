@@ -1,9 +1,10 @@
-const { app, BrowserWindow, globalShortcut, shell } = require("electron");
+const { app, BrowserWindow, globalShortcut, shell, dialog } = require("electron");
 
 const PRODUCT_URL =
   process.env.MATCHDAY_DESKTOP_URL ||
   "https://matchday-desktop.vercel.app/apps/matchday-desktop/index.html";
 
+const isDev = process.argv.includes("--dev");
 let mainWindow = null;
 
 function createWindow() {
@@ -15,7 +16,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: "#03070c",
     autoHideMenuBar: true,
-    show: false,
+    show: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -23,15 +24,53 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadURL(PRODUCT_URL);
+  if (!isDev) {
+    mainWindow.setFullScreen(true);
+  }
 
-  mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
+  mainWindow.loadURL(PRODUCT_URL).catch(error => {
+    console.error("Matchday Desktop loadURL failed:", error);
 
-    if (!process.argv.includes("--dev")) {
-      mainWindow.setFullScreen(true);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.loadURL(
+        "data:text/html;charset=utf-8," +
+        encodeURIComponent(`
+          <html>
+            <body style="
+              margin:0;
+              background:#03070c;
+              color:#fff;
+              font-family:Segoe UI,Arial,sans-serif;
+              display:grid;
+              place-items:center;
+              min-height:100vh;
+            ">
+              <div style="max-width:720px;padding:40px">
+                <h1>Matchday Desktop could not load</h1>
+                <p>The Windows shell started correctly, but the hosted Matchday Desktop page could not be reached.</p>
+                <p><strong>URL:</strong> ${PRODUCT_URL}</p>
+                <p>${String(error.message || error)}</p>
+              </div>
+            </body>
+          </html>
+        `)
+      );
     }
   });
+
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (isMainFrame) {
+        console.error(
+          "Renderer failed to load:",
+          errorCode,
+          errorDescription,
+          validatedURL
+        );
+      }
+    }
+  );
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -39,7 +78,9 @@ function createWindow() {
   });
 
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith(PRODUCT_URL.split("/apps/")[0])) {
+    const productOrigin = new URL(PRODUCT_URL).origin;
+
+    if (!url.startsWith(productOrigin)) {
       event.preventDefault();
       shell.openExternal(url);
     }
@@ -51,6 +92,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  console.log("Electron ready.");
+  console.log("Loading:", PRODUCT_URL);
+  console.log("Mode:", isDev ? "development window" : "fullscreen");
+
   createWindow();
 
   globalShortcut.register("F11", () => {
@@ -70,6 +115,12 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+}).catch(error => {
+  console.error("Electron startup failed:", error);
+  dialog.showErrorBox(
+    "Matchday Desktop startup failed",
+    String(error?.stack || error)
+  );
 });
 
 app.on("will-quit", () => {

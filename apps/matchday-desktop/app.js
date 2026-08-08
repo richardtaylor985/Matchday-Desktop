@@ -429,15 +429,26 @@ function updateClock() {
       ? loadUserSettings()
       : { clockFormat: "24", showSeconds: false };
 
-  const clock = document.getElementById("clock");
-  if (!clock) return;
+  const timeElement = document.getElementById("heroTime");
+  const dateElement = document.getElementById("heroDate");
 
-  clock.textContent = now.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: settings.showSeconds ? "2-digit" : undefined,
-    hour12: settings.clockFormat === "12"
-  });
+  if (timeElement) {
+    timeElement.textContent = now.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: settings.showSeconds ? "2-digit" : undefined,
+      hour12: settings.clockFormat === "12"
+    });
+  }
+
+  if (dateElement) {
+    dateElement.textContent = now.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    }).toUpperCase();
+  }
 }
 
 function initialiseLoadingState() {

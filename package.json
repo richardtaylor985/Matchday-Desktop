@@ -34,5 +34,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     }
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
