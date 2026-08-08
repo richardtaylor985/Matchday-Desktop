@@ -140,3 +140,32 @@ marks the Vercel dashboard payload as the stable `dashboard-v1` contract.
 The client contains no upstream football-data.org credential.
 
 Next milestone: Stage 2.6 — multi-club platform foundations.
+
+## Stage 2.5e — LIVE reliability and API efficiency
+
+No UI changes.
+
+The Coventry cloud dashboard now makes one broad Coventry match-history request and
+derives Last 5, matchday/live detection, Next Match and Next 3 locally.
+
+The opponent's Last 5 is also derived from one broad historical request.
+
+This substantially reduces upstream football-data.org calls during LIVE mode.
+
+Venue fallback no longer depends on a separate match-details request. If the fixture
+payload has no venue, the API resolves it from the home-team resource and reuses that
+value for the featured LIVE/test fixture.
+
+Diagnostics now include:
+
+    diagnostics.upstream.requestCount
+    diagnostics.upstream.requests
+
+A normal dashboard request should typically require about 4 upstream calls:
+
+1. Coventry match history
+2. Premier League standings
+3. home-team venue, only if venue is missing
+4. opponent match history
+
+If the match payload already contains a venue, the count can be lower.

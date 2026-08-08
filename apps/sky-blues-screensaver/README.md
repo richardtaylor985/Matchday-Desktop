@@ -46,3 +46,8 @@ Edit `config.js` and set `testState` to:
 - null
 
 `null` restores normal automatic behaviour.
+
+## Stage 2.5e
+
+No client visual changes are required. LIVE venue and Last 5 reliability are fixed
+server-side through the optimized Matchday Desktop API.

@@ -16,18 +16,27 @@ function todayUtcDate() {
   ));
 }
 
-async function footballApi(path) {
+async function footballApi(path, requestLog) {
   const token = process.env.FOOTBALL_DATA_API_KEY;
 
   if (!token) {
     throw new Error("FOOTBALL_DATA_API_KEY is not configured");
   }
 
+  const startedAt = Date.now();
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
       "X-Auth-Token": token
     }
   });
+
+  if (requestLog) {
+    requestLog.push({
+      endpoint: path,
+      status: response.status,
+      durationMs: Date.now() - startedAt
+    });
+  }
 
   if (!response.ok) {
     const body = await response.text();
@@ -113,22 +122,14 @@ function dedupeMatches(matches) {
   });
 }
 
-async function getTeam(teamId) {
-  return footballApi(`/teams/${teamId}`);
-}
-
-async function getMatchesByDateWindow(teamId, dateFrom, dateTo, status = null) {
-  let endpoint =
+async function getTeamMatchHistory(teamId, dateFrom, dateTo, requestLog) {
+  const endpoint =
     `/teams/${teamId}/matches` +
     `?dateFrom=${dateFrom}` +
     `&dateTo=${dateTo}` +
     `&limit=100`;
 
-  if (status) {
-    endpoint += `&status=${encodeURIComponent(status)}`;
-  }
-
-  const data = await footballApi(endpoint);
+  const data = await footballApi(endpoint, requestLog);
 
   return {
     endpoint,
@@ -136,93 +137,8 @@ async function getMatchesByDateWindow(teamId, dateFrom, dateTo, status = null) {
   };
 }
 
-async function getUpcomingMatches(teamId) {
-  const today = todayUtcDate();
-  const end = new Date(Date.UTC(PREMIER_LEAGUE_SEASON + 1, 5, 30));
-
-  const result = await getMatchesByDateWindow(
-    teamId,
-    isoDate(today),
-    isoDate(end)
-  );
-
-  const allowedStatuses = new Set([
-    "SCHEDULED",
-    "TIMED",
-    "POSTPONED"
-  ]);
-
-  const upcoming = result.matches
-    .filter(m => allowedStatuses.has(m.status))
-    .filter(m => new Date(m.utcDate) >= new Date())
-    .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
-
-  return {
-    matches: upcoming,
-    diagnostics: {
-      endpoint: result.endpoint,
-      totalReturned: result.matches.length,
-      futureUsable: upcoming.length,
-      usableStatuses: [...new Set(upcoming.map(m => m.status))],
-      selectedPreview: upcoming.slice(0, 4).map(m => ({
-        id: m.id,
-        utcDate: m.utcDate,
-        status: m.status,
-        homeTeam: m.homeTeam?.name,
-        awayTeam: m.awayTeam?.name
-      }))
-    }
-  };
-}
-
-async function getLastFive(teamId) {
-  const today = todayUtcDate();
-  const currentStart = new Date(Date.UTC(PREMIER_LEAGUE_SEASON, 6, 1));
-  const previousStart = new Date(Date.UTC(PREVIOUS_SEASON, 6, 1));
-  const previousEnd = new Date(Date.UTC(PREMIER_LEAGUE_SEASON, 5, 30));
-
-  let current = [];
-  let previous = [];
-  const diagnostics = [];
-  const warnings = [];
-
-  if (today >= currentStart) {
-    try {
-      const result = await getMatchesByDateWindow(
-        teamId,
-        isoDate(currentStart),
-        isoDate(today),
-        "FINISHED"
-      );
-      current = result.matches;
-      diagnostics.push({
-        endpoint: result.endpoint,
-        returnedMatches: current.length
-      });
-    } catch (error) {
-      warnings.push(`current-season form: ${error.message}`);
-    }
-  }
-
-  if (current.length < 5) {
-    try {
-      const result = await getMatchesByDateWindow(
-        teamId,
-        isoDate(previousStart),
-        isoDate(previousEnd),
-        "FINISHED"
-      );
-      previous = result.matches;
-      diagnostics.push({
-        endpoint: result.endpoint,
-        returnedMatches: previous.length
-      });
-    } catch (error) {
-      warnings.push(`previous-season form: ${error.message}`);
-    }
-  }
-
-  const matches = dedupeMatches([...current, ...previous])
+function getLastFiveFromHistory(matches) {
+  return dedupeMatches(matches)
     .filter(m =>
       m.status === "FINISHED" &&
       Number.isFinite(m.teamScore) &&
@@ -230,47 +146,42 @@ async function getLastFive(teamId) {
     )
     .sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate))
     .slice(0, 5);
-
-  return {
-    matches,
-    warnings,
-    diagnostics: {
-      teamId,
-      currentReturned: current.length,
-      previousReturned: previous.length,
-      finalUsable: matches.length,
-      requests: diagnostics
-    }
-  };
 }
 
-async function enrichNextMatch(match) {
-  let venue = match.venue || "";
+function getUpcomingFromHistory(matches) {
+  const allowedStatuses = new Set([
+    "SCHEDULED",
+    "TIMED",
+    "POSTPONED"
+  ]);
 
-  if (!venue && match.id) {
-    try {
-      const details = await footballApi(`/matches/${match.id}`);
-      venue = details.venue || venue;
-    } catch {
-      // Continue to home-team fallback.
-    }
-  }
+  const now = new Date();
 
-  if (!venue && match.homeTeam?.id) {
-    try {
-      const homeTeam = await getTeam(match.homeTeam.id);
-      venue = homeTeam.venue || venue;
-    } catch {
-      // UI can fall back to Venue TBC.
-    }
-  }
-
-  return { ...match, venue };
+  return matches
+    .filter(m => allowedStatuses.has(m.status))
+    .filter(m => new Date(m.utcDate) >= now)
+    .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
 }
 
-async function getStandings() {
+function getMatchdayWindowFromHistory(matches) {
+  const now = new Date();
+
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - 1);
+
+  const end = new Date(now);
+  end.setUTCDate(end.getUTCDate() + 1);
+
+  return matches.filter(m => {
+    const kickoff = new Date(m.utcDate);
+    return kickoff >= start && kickoff <= end;
+  });
+}
+
+async function getStandings(requestLog) {
   const data = await footballApi(
-    `/competitions/PL/standings?season=${PREMIER_LEAGUE_SEASON}`
+    `/competitions/PL/standings?season=${PREMIER_LEAGUE_SEASON}`,
+    requestLog
   );
 
   const total =
@@ -297,22 +208,28 @@ async function getStandings() {
   return hasCoventry ? rows : [];
 }
 
-async function getMatchdayWindow(teamId) {
-  const now = new Date();
+async function resolveVenue(match, requestLog, teamCache) {
+  if (!match) return match;
+  if (match.venue) return match;
 
-  const start = new Date(now);
-  start.setUTCDate(start.getUTCDate() - 1);
+  const homeTeamId = match.homeTeam?.id;
+  if (!homeTeamId) return match;
 
-  const end = new Date(now);
-  end.setUTCDate(end.getUTCDate() + 1);
+  try {
+    let homeTeam = teamCache.get(homeTeamId);
 
-  const result = await getMatchesByDateWindow(
-    teamId,
-    isoDate(start),
-    isoDate(end)
-  );
+    if (!homeTeam) {
+      homeTeam = await footballApi(`/teams/${homeTeamId}`, requestLog);
+      teamCache.set(homeTeamId, homeTeam);
+    }
 
-  return result.matches;
+    return {
+      ...match,
+      venue: homeTeam.venue || ""
+    };
+  } catch {
+    return match;
+  }
 }
 
 function isLiveStatus(status) {
@@ -380,8 +297,6 @@ function determineMatchState(matchdayMatches, nextMatch) {
 }
 
 function getTestMode(req) {
-  // Optional query-string test harness:
-  // ?testState=LIVE&homeScore=1&awayScore=2&minute=67
   const raw = String(req.query?.testState || "").toUpperCase();
 
   if (!raw) return null;
@@ -439,28 +354,40 @@ function applyTestMode(matchState, nextMatch, req) {
 }
 
 async function buildDashboard(req) {
-  const [
-    upcomingResult,
-    cityForm,
-    standings,
-    matchdayMatches
-  ] = await Promise.all([
-    getUpcomingMatches(COVENTRY_PROVIDER_ID),
-    getLastFive(COVENTRY_PROVIDER_ID),
-    getStandings(),
-    getMatchdayWindow(COVENTRY_PROVIDER_ID)
+  const requestLog = [];
+  const teamCache = new Map();
+  const today = todayUtcDate();
+
+  // One Coventry history call now supplies:
+  // - previous/current Last 5
+  // - matchday/live detection
+  // - next match
+  // - Next 3
+  const cityHistoryStart = new Date(Date.UTC(PREVIOUS_SEASON, 6, 1));
+  const cityHistoryEnd = new Date(Date.UTC(PREMIER_LEAGUE_SEASON + 1, 5, 30));
+
+  const [cityHistoryResult, standings] = await Promise.all([
+    getTeamMatchHistory(
+      COVENTRY_PROVIDER_ID,
+      isoDate(cityHistoryStart),
+      isoDate(cityHistoryEnd),
+      requestLog
+    ),
+    getStandings(requestLog)
   ]);
 
-  const futureFixtures = upcomingResult.matches;
+  const cityHistory = cityHistoryResult.matches;
+  const futureFixtures = getUpcomingFromHistory(cityHistory);
+  const cityLast5 = getLastFiveFromHistory(cityHistory);
+  const matchdayMatches = getMatchdayWindowFromHistory(cityHistory);
+
   const next = futureFixtures[0];
 
   if (!next) {
-    throw new Error(
-      "No future Coventry City fixture was returned."
-    );
+    throw new Error("No future Coventry City fixture was returned.");
   }
 
-  const nextMatch = await enrichNextMatch(next);
+  const nextMatch = await resolveVenue(next, requestLog, teamCache);
 
   const naturalMatchState =
     determineMatchState(matchdayMatches, nextMatch);
@@ -470,12 +397,18 @@ async function buildDashboard(req) {
 
   let featuredMatch = matchState.featuredMatch;
 
-  if (
-    !matchState.testMode &&
-    featuredMatch?.id &&
-    featuredMatch.id !== nextMatch.id
-  ) {
-    featuredMatch = await enrichNextMatch(featuredMatch);
+  // Preserve simulated scores in test mode, but still carry the known venue.
+  if (matchState.testMode) {
+    featuredMatch = {
+      ...featuredMatch,
+      venue: featuredMatch.venue || nextMatch.venue || ""
+    };
+  } else {
+    featuredMatch = await resolveVenue(
+      featuredMatch,
+      requestLog,
+      teamCache
+    );
   }
 
   const featuredOpponent =
@@ -483,29 +416,38 @@ async function buildDashboard(req) {
       ? featuredMatch.opponent
       : nextMatch.opponent;
 
-  const opponentForm = await getLastFive(featuredOpponent.id);
+  // One opponent-history call supplies the complete Last 5.
+  const opponentHistoryStart =
+    new Date(Date.UTC(PREVIOUS_SEASON, 6, 1));
 
-  const warnings = [
-    ...cityForm.warnings,
-    ...opponentForm.warnings
-  ];
+  const opponentHistoryResult = await getTeamMatchHistory(
+    featuredOpponent.id,
+    isoDate(opponentHistoryStart),
+    isoDate(today),
+    requestLog
+  );
 
-  if (cityForm.matches.length < 5) {
+  const opponentLast5 =
+    getLastFiveFromHistory(opponentHistoryResult.matches);
+
+  const warnings = [];
+
+  if (cityLast5.length < 5) {
     warnings.push(
-      `Coventry form returned ${cityForm.matches.length}/5 matches`
+      `Coventry form returned ${cityLast5.length}/5 matches`
     );
   }
 
-  if (opponentForm.matches.length < 5) {
+  if (opponentLast5.length < 5) {
     warnings.push(
       `${featuredOpponent.name} form returned ` +
-      `${opponentForm.matches.length}/5 matches`
+      `${opponentLast5.length}/5 matches`
     );
   }
 
   return {
     service: "matchday-desktop-api",
-    version: "2.5d",
+    version: "2.5e",
     contract: "dashboard-v1",
     club: "coventry-city",
     generatedAt: new Date().toISOString(),
@@ -524,24 +466,36 @@ async function buildDashboard(req) {
 
     nextThree: futureFixtures.slice(1, 4),
 
-    cityLast5: cityForm.matches,
-    opponentLast5: opponentForm.matches,
-
+    cityLast5,
+    opponentLast5,
     standings,
-
     warnings,
 
     diagnostics: {
-      upcomingFixtures: upcomingResult.diagnostics,
+      upstream: {
+        requestCount: requestLog.length,
+        requests: requestLog
+      },
+      cityHistory: {
+        endpoint: cityHistoryResult.endpoint,
+        totalMatches: cityHistory.length,
+        lastFiveUsable: cityLast5.length,
+        futureUsable: futureFixtures.length,
+        matchdayWindowMatches: matchdayMatches.length
+      },
+      opponentHistory: {
+        endpoint: opponentHistoryResult.endpoint,
+        totalMatches: opponentHistoryResult.matches.length,
+        lastFiveUsable: opponentLast5.length
+      },
       matchday: {
         mode: matchState.mode,
         testModeActive: matchState.testMode === true,
         refreshAfterSeconds: matchState.refreshAfterSeconds,
         featuredMatchId: featuredMatch?.id || null,
-        featuredMatchStatus: featuredMatch?.status || null
-      },
-      cityLast5: cityForm.diagnostics,
-      opponentLast5: opponentForm.diagnostics
+        featuredMatchStatus: featuredMatch?.status || null,
+        venue: featuredMatch?.venue || null
+      }
     }
   };
 }
@@ -559,7 +513,7 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       service: "matchday-desktop-api",
-      version: "2.5d",
+      version: "2.5e",
       error: "Method not allowed"
     });
   }
@@ -583,7 +537,8 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       service: "matchday-desktop-api",
-      version: "2.5d",
+      version: "2.5e",
+      contract: "dashboard-v1",
       club: "coventry-city",
       error: error.message
     });
