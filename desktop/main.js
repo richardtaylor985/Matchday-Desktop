@@ -12,6 +12,7 @@ const args = process.argv.slice(1).map(v => String(v).toLowerCase());
 const isDev = args.includes("--dev");
 const isUninstallCleanup = args.includes("--uninstall-cleanup");
 const isWallpaperMode = args.includes("--wallpaper");
+const isDynamicWallpaperMode = args.includes("--dynamic-wallpaper");
 let mainWindow = null;
 let armed = false;
 let lastMouse = null;
@@ -98,7 +99,7 @@ function registerIntegrationIpc() {
     }
 
     const shouldStart = !!settings.startWithWindows || !!settings.useLiveDesktop;
-    const launchArgs = settings.useLiveDesktop ? "--wallpaper" : "";
+    const launchArgs = settings.useLiveDesktop ? "--dynamic-wallpaper" : "";
     await integration.setStartup(shouldStart, process.execPath, launchArgs);
     writeUserConfig(next);
     return next;
@@ -193,6 +194,162 @@ function attachWindowToDesktop(win) {
   });
 }
 
+
+const DYNAMIC_WALLPAPER_INTERVAL_MS = 60 * 1000;
+let dynamicWallpaperWindow = null;
+let dynamicWallpaperTimer = null;
+let previousWallpaperPath = null;
+
+function powershellFile(scriptPath, args = []) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy", "Bypass",
+        "-File", scriptPath,
+        ...args
+      ],
+      { windowsHide: true },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error((stderr || stdout || error.message).trim()));
+          return;
+        }
+        resolve((stdout || "").trim());
+      }
+    );
+  });
+}
+
+async function captureAndApplyDynamicWallpaper() {
+  if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) return;
+
+  const display = screen.getPrimaryDisplay();
+  const width = Math.max(1, display.size.width);
+  const height = Math.max(1, display.size.height);
+
+  dynamicWallpaperWindow.setSize(width, height, false);
+
+  // Give the remote dashboard a moment to finish any current layout/data update.
+  await new Promise(resolve => setTimeout(resolve, 1200));
+
+  // Wallpaper is a static capture, so force time-sensitive UI into a known,
+  // current state immediately before capture.
+  await dynamicWallpaperWindow.webContents.executeJavaScript(`
+    document.body.classList.add("dynamic-wallpaper-mode");
+
+    if (typeof updateClock === "function") {
+      updateClock();
+    }
+
+    if (typeof updateCountdown === "function") {
+      updateCountdown();
+    }
+
+    // Defensive fallback in case hosted function names ever change.
+    const now = new Date();
+    const heroTime = document.getElementById("heroTime");
+    const heroDate = document.getElementById("heroDate");
+
+    if (heroTime && (!heroTime.textContent || heroTime.textContent.includes("--"))) {
+      heroTime.textContent = now.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      });
+    }
+
+    if (heroDate && !heroDate.textContent) {
+      heroDate.textContent = now.toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }).toUpperCase();
+    }
+  `);
+
+  // Allow the DOM repaint to complete before capture.
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  const image = await dynamicWallpaperWindow.webContents.capturePage({
+    x: 0,
+    y: 0,
+    width,
+    height
+  });
+
+  const wallpaperDir = path.join(app.getPath("userData"), "wallpaper");
+  fs.mkdirSync(wallpaperDir, { recursive: true });
+
+  const outputPath = path.join(wallpaperDir, "matchday-desktop.png");
+  fs.writeFileSync(outputPath, image.toPNG());
+
+  const setter = path.join(__dirname, "set-wallpaper.ps1");
+  const result = await powershellFile(setter, [
+    "-ImagePath", outputPath
+  ]);
+
+  console.log("Dynamic wallpaper refreshed:", outputPath);
+  if (result) console.log("Wallpaper setter:", result);
+}
+
+function createDynamicWallpaperRenderer() {
+  const display = screen.getPrimaryDisplay();
+
+  dynamicWallpaperWindow = new BrowserWindow({
+    title: "Matchday Desktop Wallpaper Renderer",
+    width: display.size.width,
+    height: display.size.height,
+    show: false,
+    frame: false,
+    backgroundColor: "#03070c",
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: path.join(__dirname, "preload.js")
+    }
+  });
+
+  dynamicWallpaperWindow.loadURL(`${PRODUCT_URL}${PRODUCT_URL.includes("?") ? "&" : "?"}wallpaperMode=1`);
+
+  dynamicWallpaperWindow.webContents.once("did-finish-load", async () => {
+    try {
+      await captureAndApplyDynamicWallpaper();
+
+      dynamicWallpaperTimer = setInterval(async () => {
+        try {
+          await captureAndApplyDynamicWallpaper();
+        } catch (error) {
+          console.error("Dynamic wallpaper refresh failed:", error);
+        }
+      }, DYNAMIC_WALLPAPER_INTERVAL_MS);
+
+      console.log(
+        `Matchday Dynamic Wallpaper active; refresh=${DYNAMIC_WALLPAPER_INTERVAL_MS / 1000}s`
+      );
+    } catch (error) {
+      console.error("Dynamic wallpaper startup failed:", error);
+      dialog.showErrorBox(
+        "Matchday Desktop Dynamic Wallpaper",
+        `Could not create the Matchday Desktop wallpaper.\n\n${error.message || error}`
+      );
+      app.quit();
+    }
+  });
+
+  dynamicWallpaperWindow.on("closed", () => {
+    if (dynamicWallpaperTimer) {
+      clearInterval(dynamicWallpaperTimer);
+      dynamicWallpaperTimer = null;
+    }
+    dynamicWallpaperWindow = null;
+  });
+}
+
 function createWallpaperWindow() {
   const display = screen.getPrimaryDisplay();
 
@@ -225,8 +382,26 @@ function createWallpaperWindow() {
 
   mainWindow.webContents.once("did-finish-load", async () => {
     try {
-      await attachWindowToDesktop(mainWindow);
-      console.log("Matchday Desktop attached behind desktop icons.");
+      const attachResult = await attachWindowToDesktop(mainWindow);
+      console.log("Matchday Desktop attached to independent WorkerW wallpaper host.");
+      console.log("Desktop attach diagnostics:", attachResult);
+
+      try {
+        const logPath = path.join(app.getPath("userData"), "live-desktop.log");
+        fs.writeFileSync(
+          logPath,
+          [
+            new Date().toISOString(),
+            `mode=${mode}`,
+            `wallpaper=${isWallpaperMode}`,
+            `result=${attachResult}`
+          ].join("\n") + "\n",
+          "utf8"
+        );
+        console.log("Live Desktop log:", logPath);
+      } catch (logError) {
+        console.warn("Could not write Live Desktop diagnostic log:", logError);
+      }
     } catch (error) {
       console.error("Live desktop attachment failed:", error);
       dialog.showErrorBox(
@@ -291,6 +466,11 @@ app.whenReady().then(async () => {
   }
 
   registerIntegrationIpc();
+
+  if (isDynamicWallpaperMode) {
+    createDynamicWallpaperRenderer();
+    return;
+  }
 
   if (isWallpaperMode) {
     createWallpaperWindow();

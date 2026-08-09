@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2a",
-  "channel": "live-desktop-experimental",
+  "version": "3.2f",
+  "channel": "dynamic-wallpaper-polish",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }

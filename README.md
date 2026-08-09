@@ -522,3 +522,125 @@ When enabled, Matchday registers a Windows startup command using `--wallpaper`.
 3.2a is intentionally limited to the primary display. The existing Windows static
 wallpaper is not replaced or deleted; it remains underneath Matchday and returns when
 Live Desktop mode stops.
+
+## Stage 3.2b — Desktop Z-Order & Icon Visibility Fix
+
+3.2b keeps the working 3.2a click-through desktop attachment and changes the
+native Z-order behaviour.
+
+Key change:
+
+    SetWindowPos(..., HWND_BOTTOM, ...)
+
+After parenting Matchday to the Windows desktop host, the Matchday window is now
+explicitly pushed to the bottom of that host's sibling Z-order.
+
+Expected visual stack:
+
+    Windows wallpaper
+    Matchday Desktop
+    Desktop icons
+    normal application windows
+    taskbar
+
+Run:
+
+    RUN-LIVE-DESKTOP-DIAGNOSTIC.bat
+
+The console reports the selected Windows host and whether WorkerW or Progman was
+used. A copy of the diagnostic is also written to:
+
+    %APPDATA%\Matchday Desktop\live-desktop.log
+
+3.2b remains an experimental primary-monitor-only implementation.
+
+## Stage 3.2c — Independent WorkerW Host Fix
+
+Diagnostics from 3.2b showed both the wallpaper host and the icon host resolving to
+`Progman`. That explains why Matchday remained visually above the desktop icons.
+
+3.2c no longer accepts Progman as a valid live-wallpaper host.
+
+It explicitly asks Explorer to create the WorkerW wallpaper layer and selects a
+WorkerW that does not contain `SHELLDLL_DefView`.
+
+Expected diagnostic result:
+
+    selected=WorkerW
+    iconHost=Progman or WorkerW
+    selectedHwnd != iconHostHwnd
+
+If no independent WorkerW can be found, 3.2c fails visibly rather than attaching
+Matchday to the icon host and obscuring the icons.
+
+The diagnostic launcher now also runs `npm install` automatically when the local
+Electron dependency is absent.
+
+## Stage 3.2d — Top-level Z-order + true child fix
+
+3.2c proved that Windows created an independent WorkerW, but Matchday still
+visually covered icons because the WorkerW itself remained above the top-level
+icon host.
+
+3.2d adds two native corrections:
+
+1. Move the selected WorkerW behind the top-level icon host using SetWindowPos.
+2. Convert Electron's window from WS_POPUP to WS_CHILD before SetParent.
+
+Expected diagnostics include:
+
+    selected=WorkerW
+    selectedHwnd != iconHostHwnd
+    hostOrder=behindIconHost
+    childStyle=WS_CHILD
+    childZ=HWND_BOTTOM
+
+Test with:
+
+    RUN-LIVE-DESKTOP-DIAGNOSTIC.bat
+
+## Stage 3.2e — Dynamic Windows Wallpaper
+
+3.2e replaces the experimental WorkerW desktop embedding architecture with a
+production-oriented dynamic wallpaper renderer.
+
+Architecture:
+
+1. Electron loads the Matchday dashboard in a hidden renderer at primary-display size.
+2. `webContents.capturePage()` captures the completed dashboard.
+3. The image is saved to the Matchday Desktop user-data wallpaper folder.
+4. Windows `SystemParametersInfo(SPI_SETDESKWALLPAPER)` applies it as the genuine
+   Windows wallpaper.
+5. The first test refreshes every 60 seconds.
+
+Test with:
+
+    RUN-DYNAMIC-WALLPAPER.bat
+
+The old `--wallpaper` WorkerW mode remains in this development package for reference
+only. Settings now register `--dynamic-wallpaper` when the desktop-background option
+is enabled.
+
+Stage 3.2e is primary-monitor-only. Restoration of the user's previous wallpaper and
+adaptive matchday/live refresh rates are intended for the next hardening iteration
+after this rendering path is verified.
+
+## Stage 3.2f — Dynamic Wallpaper Time Presentation
+
+3.2f fixes the missing bottom-left clock by explicitly refreshing the clock/date
+immediately before every wallpaper capture.
+
+Dynamic wallpaper mode is intentionally minute-granularity:
+
+- bottom-left time/date is captured at the current time;
+- countdown seconds are hidden in wallpaper mode;
+- days / hours / minutes remain visible;
+- wallpaper refresh remains every 60 seconds;
+- screensaver mode remains fully live and continues to show seconds.
+
+The hidden wallpaper renderer loads the hosted dashboard with:
+
+    ?wallpaperMode=1
+
+so wallpaper-specific presentation can be handled without affecting desktop-app or
+screensaver modes.

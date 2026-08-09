@@ -911,3 +911,15 @@ body.state-full-time .match-state-banner strong {
   color: #111111;
   background: #ffffff;
 }
+
+
+/* Stage 3.2f — Dynamic wallpaper presentation
+   A Windows wallpaper is a periodically refreshed image, so seconds are omitted
+   rather than showing a value that appears frozen between captures. */
+body.dynamic-wallpaper-mode .countdown-row {
+  grid-template-columns: 1.5fr repeat(3, 1.04fr);
+}
+
+body.dynamic-wallpaper-mode .countdown-row > div:last-child {
+  display: none;
+}

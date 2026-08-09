@@ -1,3 +1,12 @@
+
+function initialiseDisplayMode() {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("wallpaperMode") === "1") {
+    document.body.classList.add("dynamic-wallpaper-mode");
+  }
+}
+
 let activeMatchDate = null;
 let hasLoadedRealData = false;
 let refreshTimer = null;
@@ -627,6 +636,7 @@ async function initialiseSelectedClub() {
 }
 
 async function bootMatchdayDesktop() {
+  initialiseDisplayMode();
   loadProductMetadata();
   try {
     const club = await resolveClubSelection();
