@@ -773,3 +773,10 @@ body.state-full-time .match-state-banner strong {
   background: rgba(255,255,255,.18);
   border-radius: 8px;
 }
+
+.settings-build-marker {
+  margin-left: 8px;
+  color: rgba(255,255,255,.32);
+  font-size: 9px;
+  letter-spacing: .06em;
+}
