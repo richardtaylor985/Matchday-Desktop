@@ -1,13 +1,16 @@
 {
   "name": "matchday-desktop",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "private": true,
   "description": "Matchday Desktop Windows shell",
   "main": "desktop/main.js",
   "scripts": {
     "desktop": "electron .",
     "desktop:dev": "electron . --dev",
-    "build:win": "electron-builder --win nsis"
+    "build:win": "electron-builder --win nsis",
+    "screensaver": "electron . /s",
+    "screensaver:config": "electron . /c",
+    "build:scr": "electron-builder --win dir && node desktop/build-scr.js"
   },
   "devDependencies": {
     "electron": "^37.2.0",

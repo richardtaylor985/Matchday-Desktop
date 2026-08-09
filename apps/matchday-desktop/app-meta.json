@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.0a",
-  "channel": "desktop-preview",
+  "version": "3.0b",
+  "channel": "screensaver-preview",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }

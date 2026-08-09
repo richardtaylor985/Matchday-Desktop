@@ -633,6 +633,11 @@ async function bootMatchdayDesktop() {
 
     if (club) {
       await initialiseSelectedClub();
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("openSettings") === "1" && typeof openSettings === "function") {
+        openSettings();
+      }
     }
   } catch (error) {
     console.error("Unable to initialise Matchday Desktop:", error);

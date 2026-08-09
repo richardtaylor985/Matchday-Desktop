@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       service: "matchday-desktop-api",
-      version: "3.0a",
+      version: "3.0b",
       error: "Method not allowed"
     });
   }
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   if (!club) {
     return res.status(404).json({
       service: "matchday-desktop-api",
-      version: "3.0a",
+      version: "3.0b",
       contract: "dashboard-v1",
       error: "Club not found",
       requestedClub: slug || null
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   } catch (error) {
     return res.status(500).json({
       service: "matchday-desktop-api",
-      version: "3.0a",
+      version: "3.0b",
       contract: "dashboard-v1",
       club: club.slug,
       error: error.message

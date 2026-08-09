@@ -339,3 +339,36 @@ sandboxing enabled.
 
 Stage 3.0a is not yet the Windows screensaver implementation. That behaviour belongs
 to Stage 3.0b after the application-shell boundary has been proven.
+
+## Stage 3.0b — Windows Screensaver Mode
+
+Test full-screen screensaver mode:
+
+    RUN-SCREENSAVER-MODE.bat
+
+Test screensaver configuration mode:
+
+    RUN-SCREENSAVER-CONFIG.bat
+
+Supported Windows-style arguments:
+
+- `/s` — full-screen screensaver
+- `/c` or `/c:HWND` — configuration
+- `/p HWND` — preview request
+
+Screensaver mode exits on meaningful mouse movement, mouse click, or key input after
+a 1.2-second startup guard.
+
+Build the `.scr` test artifact with:
+
+    BUILD-SCREENSAVER.bat
+
+Output:
+
+    dist/win-unpacked/Matchday Desktop.scr
+
+Keep the `.scr` beside the rest of `win-unpacked`; Stage 3.0c will install/register
+it properly.
+
+Windows `/p` preview is intentionally a clean no-op in 3.0b because embedding an
+Electron BrowserWindow in a foreign native HWND requires a Win32 native bridge.
