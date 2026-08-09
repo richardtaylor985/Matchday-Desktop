@@ -26,6 +26,7 @@ function openSettings() {
   document.getElementById("settingClockFormat").value = settings.clockFormat;
   document.getElementById("settingShowSeconds").checked = settings.showSeconds;
   panel.hidden = false;
+  loadWindowsIntegrationSettings();
 }
 
 function closeSettings() {
@@ -76,3 +77,81 @@ async function testApiConnection() {
     result.textContent = `FAILED • ${error.message}`;
   }
 }
+
+
+async function loadWindowsIntegrationSettings() {
+  const section = document.getElementById("windowsIntegrationSettings");
+  const status = document.getElementById("windowsIntegrationStatus");
+
+  if (!section) return;
+
+  if (!window.matchdayWindows) {
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "";
+
+  try {
+    const state = await window.matchdayWindows.getSettings();
+
+    document.getElementById("useMatchdayScreensaver").checked =
+      state.useScreenSaver === true;
+
+    document.getElementById("startMatchdayWindows").checked =
+      state.startWithWindows === true;
+
+    document.getElementById("matchdayScreenSaverTimeout").value =
+      String(state.timeoutSeconds || 600);
+
+    if (!state.configured && status) {
+      status.textContent =
+        "Choose your Windows options, then save to complete first-run setup.";
+    }
+  } catch (error) {
+    if (status) {
+      status.textContent =
+        `Unable to read Windows settings: ${error.message || error}`;
+    }
+  }
+}
+
+async function saveWindowsIntegrationSettings() {
+  const status = document.getElementById("windowsIntegrationStatus");
+
+  if (!window.matchdayWindows) {
+    if (status) status.textContent = "Windows integration is available in the installed app.";
+    return;
+  }
+
+  if (status) status.textContent = "Saving…";
+
+  try {
+    const saved = await window.matchdayWindows.saveSettings({
+      useScreenSaver:
+        document.getElementById("useMatchdayScreensaver").checked,
+      startWithWindows:
+        document.getElementById("startMatchdayWindows").checked,
+      timeoutSeconds:
+        Number(document.getElementById("matchdayScreenSaverTimeout").value)
+    });
+
+    if (status) {
+      status.textContent = saved.useScreenSaver
+        ? "Saved. Matchday Desktop is now your Windows screensaver."
+        : "Windows settings saved.";
+    }
+  } catch (error) {
+    if (status) {
+      status.textContent =
+        `Could not save Windows settings: ${error.message || error}`;
+    }
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const button = document.getElementById("saveWindowsIntegration");
+  if (button) {
+    button.addEventListener("click", saveWindowsIntegrationSettings);
+  }
+});

@@ -152,6 +152,36 @@
         <small id="connectionTestResult"></small>
       </div>
 
+      <div id="windowsIntegrationSettings" class="settings-windows">
+        <div class="settings-windows-title">WINDOWS INTEGRATION</div>
+
+        <div class="settings-group settings-check">
+          <label for="useMatchdayScreensaver">Set Matchday Desktop as my Windows screensaver</label>
+          <input id="useMatchdayScreensaver" type="checkbox">
+        </div>
+
+        <div class="settings-group">
+          <label for="matchdayScreenSaverTimeout">Screensaver starts after</label>
+          <select id="matchdayScreenSaverTimeout">
+            <option value="300">5 minutes</option>
+            <option value="600" selected>10 minutes</option>
+            <option value="900">15 minutes</option>
+            <option value="1800">30 minutes</option>
+          </select>
+        </div>
+
+        <div class="settings-group settings-check">
+          <label for="startMatchdayWindows">Start Matchday Desktop automatically with Windows</label>
+          <input id="startMatchdayWindows" type="checkbox">
+        </div>
+
+        <div class="settings-group">
+          <span>Windows configuration</span>
+          <button id="saveWindowsIntegration" type="button">SAVE WINDOWS SETTINGS</button>
+          <small id="windowsIntegrationStatus"></small>
+        </div>
+      </div>
+
       <div class="settings-meta">
         Version <strong id="settingsVersion">…</strong>
       </div>

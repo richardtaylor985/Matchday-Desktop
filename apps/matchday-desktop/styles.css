@@ -721,3 +721,18 @@ body.state-full-time .match-state-banner strong {
   color: #fff;
   cursor: pointer;
 }
+
+
+.settings-windows {
+  margin-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  padding-top: 8px;
+}
+
+.settings-windows-title {
+  padding: 12px 0 4px;
+  color: var(--sky-soft, #8dd8ff);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
