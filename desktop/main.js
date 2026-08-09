@@ -11,7 +11,6 @@ const PRODUCT_URL =
 const args = process.argv.slice(1).map(v => String(v).toLowerCase());
 const isDev = args.includes("--dev");
 const isUninstallCleanup = args.includes("--uninstall-cleanup");
-const isWallpaperMode = args.includes("--wallpaper");
 const isDynamicWallpaperMode = args.includes("--dynamic-wallpaper");
 let mainWindow = null;
 let armed = false;
@@ -66,6 +65,18 @@ async function runUninstallCleanup() {
   }
 
   try {
+    if (current.wallpaperPid && Number(current.wallpaperPid) !== process.pid) {
+      stopExternalWallpaperRenderer(current.wallpaperPid);
+    }
+
+    if (current.useLiveDesktop && current.previousWallpaper) {
+      await restorePreviousWallpaper(current);
+    }
+  } catch (error) {
+    console.error("Unable to restore previous wallpaper:", error);
+  }
+
+  try {
     await integration.setStartup(false, process.execPath);
   } catch (error) {
     console.error("Unable to remove startup registration:", error);
@@ -98,9 +109,36 @@ function registerIntegrationIpc() {
       await integration.restoreScreenSaver(current.previousScreenSaver);
     }
 
+    if (settings.useLiveDesktop) {
+      if (!current.previousWallpaper) {
+        next.previousWallpaper = await getCurrentWallpaperState();
+      }
+
+      if (current.wallpaperPid && Number(current.wallpaperPid) !== process.pid) {
+        stopExternalWallpaperRenderer(current.wallpaperPid);
+      }
+
+      if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) {
+        createDynamicWallpaperRenderer();
+      }
+    } else if (current.useLiveDesktop) {
+      if (current.wallpaperPid && Number(current.wallpaperPid) !== process.pid) {
+        stopExternalWallpaperRenderer(current.wallpaperPid);
+      }
+
+      stopDynamicWallpaperRenderer();
+
+      if (current.previousWallpaper) {
+        await restorePreviousWallpaper(current);
+      }
+
+      next.wallpaperPid = null;
+    }
+
     const shouldStart = !!settings.startWithWindows || !!settings.useLiveDesktop;
     const launchArgs = settings.useLiveDesktop ? "--dynamic-wallpaper" : "";
     await integration.setStartup(shouldStart, process.execPath, launchArgs);
+
     writeUserConfig(next);
     return next;
   });
@@ -156,46 +194,6 @@ function installDismissal() {
 }
 
 
-function nativeWindowHandleAsUInt64(win) {
-  const buffer = win.getNativeWindowHandle();
-  if (buffer.length >= 8) return buffer.readBigUInt64LE(0).toString();
-  return BigInt(buffer.readUInt32LE(0)).toString();
-}
-
-function attachWindowToDesktop(win) {
-  return new Promise((resolve, reject) => {
-    const display = screen.getPrimaryDisplay();
-    const bounds = display.bounds;
-    const hwnd = nativeWindowHandleAsUInt64(win);
-    const script = path.join(__dirname, "attach-to-desktop.ps1");
-
-    execFile(
-      "powershell.exe",
-      [
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy", "Bypass",
-        "-File", script,
-        "-ChildHwnd", hwnd,
-        "-X", String(bounds.x),
-        "-Y", String(bounds.y),
-        "-Width", String(bounds.width),
-        "-Height", String(bounds.height)
-      ],
-      { windowsHide: true },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error((stderr || stdout || error.message).trim()));
-          return;
-        }
-        resolve((stdout || "").trim());
-      }
-    );
-  });
-}
-
-
-const DYNAMIC_WALLPAPER_INTERVAL_MS = 60 * 1000;
 let dynamicWallpaperWindow = null;
 let dynamicWallpaperTimer = null;
 let previousWallpaperPath = null;
@@ -221,6 +219,122 @@ function powershellFile(scriptPath, args = []) {
       }
     );
   });
+}
+
+
+const WALLPAPER_REFRESH_NORMAL_MS = 60 * 1000;
+const WALLPAPER_REFRESH_MATCHDAY_MS = 30 * 1000;
+const WALLPAPER_REFRESH_LIVE_MS = 15 * 1000;
+
+function updateIntegrationConfig(patch) {
+  const current = readUserConfig();
+  const next = { ...current, ...patch };
+  writeUserConfig(next);
+  return next;
+}
+
+async function getCurrentWallpaperState() {
+  const script = path.join(__dirname, "get-wallpaper-state.ps1");
+  const result = await powershellFile(script);
+  return result ? JSON.parse(result) : {};
+}
+
+async function restorePreviousWallpaper(state = readUserConfig()) {
+  const previous = state.previousWallpaper;
+  if (!previous?.path) return false;
+
+  const script = path.join(__dirname, "restore-wallpaper.ps1");
+
+  await powershellFile(script, [
+    "-ImagePath", previous.path,
+    "-WallpaperStyle", String(previous.style ?? "10"),
+    "-TileWallpaper", String(previous.tile ?? "0")
+  ]);
+
+  return true;
+}
+
+async function determineWallpaperRefreshMs() {
+  if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) {
+    return WALLPAPER_REFRESH_NORMAL_MS;
+  }
+
+  try {
+    return await dynamicWallpaperWindow.webContents.executeJavaScript(`
+      (() => {
+        const title = (document.getElementById("matchCardTitle")?.textContent || "").toUpperCase();
+        const state = (document.getElementById("matchStateText")?.textContent || "").toUpperCase();
+
+        if (title.includes("LIVE") || state.includes("LIVE")) {
+          return ${15 * 1000};
+        }
+
+        if (
+          title.includes("MATCHDAY") ||
+          state.includes("MATCHDAY") ||
+          title.includes("FULL TIME") ||
+          state.includes("FULL TIME")
+        ) {
+          return ${30 * 1000};
+        }
+
+        return ${60 * 1000};
+      })()
+    `);
+  } catch {
+    return WALLPAPER_REFRESH_NORMAL_MS;
+  }
+}
+
+async function scheduleNextDynamicWallpaperRefresh() {
+  if (dynamicWallpaperTimer) {
+    clearTimeout(dynamicWallpaperTimer);
+    dynamicWallpaperTimer = null;
+  }
+
+  const delay = await determineWallpaperRefreshMs();
+
+  console.log(`Next dynamic wallpaper refresh in ${delay / 1000}s`);
+
+  dynamicWallpaperTimer = setTimeout(async () => {
+    try {
+      await captureAndApplyDynamicWallpaper();
+    } catch (error) {
+      console.error("Dynamic wallpaper refresh failed:", error?.stack || error);
+    } finally {
+      if (dynamicWallpaperWindow && !dynamicWallpaperWindow.isDestroyed()) {
+        scheduleNextDynamicWallpaperRefresh();
+      }
+    }
+  }, delay);
+}
+
+function stopDynamicWallpaperRenderer() {
+  if (dynamicWallpaperTimer) {
+    clearTimeout(dynamicWallpaperTimer);
+    dynamicWallpaperTimer = null;
+  }
+
+  if (dynamicWallpaperWindow && !dynamicWallpaperWindow.isDestroyed()) {
+    dynamicWallpaperWindow.destroy();
+  }
+
+  dynamicWallpaperWindow = null;
+
+  const state = readUserConfig();
+  if (state.wallpaperPid === process.pid) {
+    updateIntegrationConfig({ wallpaperPid: null });
+  }
+}
+
+function stopExternalWallpaperRenderer(pid) {
+  if (!pid || Number(pid) === process.pid) return;
+
+  try {
+    process.kill(Number(pid));
+  } catch (error) {
+    console.warn("Could not stop previous wallpaper renderer:", error?.message || error);
+  }
 }
 
 async function captureAndApplyDynamicWallpaper() {
@@ -344,19 +458,11 @@ function createDynamicWallpaperRenderer() {
 
   dynamicWallpaperWindow.webContents.once("did-finish-load", async () => {
     try {
+      updateIntegrationConfig({ wallpaperPid: process.pid });
       await captureAndApplyDynamicWallpaper();
+      await scheduleNextDynamicWallpaperRefresh();
 
-      dynamicWallpaperTimer = setInterval(async () => {
-        try {
-          await captureAndApplyDynamicWallpaper();
-        } catch (error) {
-          console.error("Dynamic wallpaper refresh failed:", error?.stack || error);
-        }
-      }, DYNAMIC_WALLPAPER_INTERVAL_MS);
-
-      console.log(
-        `Matchday Dynamic Wallpaper active; refresh=${DYNAMIC_WALLPAPER_INTERVAL_MS / 1000}s`
-      );
+      console.log("Matchday Dynamic Wallpaper active with adaptive refresh.");
     } catch (error) {
       console.error("Dynamic wallpaper startup failed:", error);
       dialog.showErrorBox(
@@ -369,79 +475,19 @@ function createDynamicWallpaperRenderer() {
 
   dynamicWallpaperWindow.on("closed", () => {
     if (dynamicWallpaperTimer) {
-      clearInterval(dynamicWallpaperTimer);
+      clearTimeout(dynamicWallpaperTimer);
       dynamicWallpaperTimer = null;
     }
+
     dynamicWallpaperWindow = null;
+
+    const state = readUserConfig();
+    if (state.wallpaperPid === process.pid) {
+      updateIntegrationConfig({ wallpaperPid: null });
+    }
   });
 }
 
-function createWallpaperWindow() {
-  const display = screen.getPrimaryDisplay();
-
-  mainWindow = new BrowserWindow({
-    title: "Matchday Desktop Live Background",
-    x: display.bounds.x,
-    y: display.bounds.y,
-    width: display.bounds.width,
-    height: display.bounds.height,
-    frame: false,
-    backgroundColor: "#03070c",
-    show: true,
-    focusable: false,
-    skipTaskbar: true,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      preload: path.join(__dirname, "preload.js")
-    }
-  });
-
-  mainWindow.setIgnoreMouseEvents(true, { forward: false });
-  mainWindow.loadURL(PRODUCT_URL);
-
-  mainWindow.webContents.once("did-finish-load", async () => {
-    try {
-      const attachResult = await attachWindowToDesktop(mainWindow);
-      console.log("Matchday Desktop attached to independent WorkerW wallpaper host.");
-      console.log("Desktop attach diagnostics:", attachResult);
-
-      try {
-        const logPath = path.join(app.getPath("userData"), "live-desktop.log");
-        fs.writeFileSync(
-          logPath,
-          [
-            new Date().toISOString(),
-            `mode=${mode}`,
-            `wallpaper=${isWallpaperMode}`,
-            `result=${attachResult}`
-          ].join("\n") + "\n",
-          "utf8"
-        );
-        console.log("Live Desktop log:", logPath);
-      } catch (logError) {
-        console.warn("Could not write Live Desktop diagnostic log:", logError);
-      }
-    } catch (error) {
-      console.error("Live desktop attachment failed:", error);
-      dialog.showErrorBox(
-        "Matchday Desktop Live Background",
-        `Could not attach Matchday Desktop behind the desktop icons.\n\n${error.message || error}`
-      );
-      app.quit();
-    }
-  });
-
-  mainWindow.on("closed", () => {
-    mainWindow = null;
-  });
-}
 
 function createWindow({ fullScreen = false, kiosk = false, settings = false } = {}) {
   mainWindow = new BrowserWindow({
@@ -495,11 +541,6 @@ app.whenReady().then(async () => {
 
   if (isDynamicWallpaperMode) {
     createDynamicWallpaperRenderer();
-    return;
-  }
-
-  if (isWallpaperMode) {
-    createWallpaperWindow();
     return;
   }
 

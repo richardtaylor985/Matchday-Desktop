@@ -151,8 +151,18 @@ async function saveWindowsIntegrationSettings() {
     });
 
     if (status) {
-      status.textContent = saved.useScreenSaver
-        ? "Saved. Matchday Desktop is now your Windows screensaver."
+      const messages = [];
+
+      if (saved.useScreenSaver) {
+        messages.push("screensaver enabled");
+      }
+
+      if (saved.useLiveDesktop) {
+        messages.push("dynamic wallpaper enabled");
+      }
+
+      status.textContent = messages.length
+        ? `Saved • ${messages.join(" • ")}.`
         : "Windows settings saved.";
     }
   } catch (error) {

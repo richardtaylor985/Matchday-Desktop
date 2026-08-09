@@ -665,3 +665,53 @@ wallpaper renderer waits up to 20 seconds for that explicit signal before captur
 
 This means Windows should never receive the temporary "Loading fixture..." frame
 during normal successful startup.
+
+## Stage 3.2g — Dynamic Wallpaper Production Hardening
+
+3.2g promotes Dynamic Wallpaper to the production desktop-background architecture.
+
+### Wallpaper preservation
+
+Before Matchday enables Dynamic Wallpaper for the first time, it stores the current
+Windows wallpaper path, WallpaperStyle and TileWallpaper values.
+
+When Dynamic Wallpaper is disabled, Matchday restores those original values.
+
+The NSIS uninstall cleanup path also restores the previous wallpaper before Matchday
+files are removed.
+
+### Settings lifecycle
+
+Saving Windows Settings with Dynamic Wallpaper enabled starts the hidden wallpaper
+renderer immediately and registers:
+
+    Matchday Desktop.exe --dynamic-wallpaper
+
+for Windows startup.
+
+Disabling the option stops the stored wallpaper-renderer process, restores the prior
+wallpaper, and removes the wallpaper startup mode when no other startup option is
+required.
+
+### Adaptive refresh
+
+Refresh timing is selected from the rendered match state:
+
+    Normal      60 seconds
+    Matchday    30 seconds
+    Live        15 seconds
+
+The renderer re-evaluates the state after every capture, so the schedule can tighten
+automatically as the application enters matchday/live mode.
+
+### WorkerW retired
+
+The experimental WorkerW desktop-embedding path and launchers are removed from the
+production package. Dynamic Windows Wallpaper is now the sole desktop-background
+architecture.
+
+Run:
+
+    CHECK-3.2G-DYNAMIC-WALLPAPER.bat
+
+before installer testing.

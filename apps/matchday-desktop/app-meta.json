@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2f1",
-  "channel": "dynamic-wallpaper-readiness-fix",
+  "version": "3.2g",
+  "channel": "dynamic-wallpaper-production",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }
