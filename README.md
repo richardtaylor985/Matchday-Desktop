@@ -715,3 +715,21 @@ Run:
     CHECK-3.2G-DYNAMIC-WALLPAPER.bat
 
 before installer testing.
+
+## Stage 3.2g1 — Windows Startup Save Fix
+
+Fixes a malformed PowerShell command used when saving Windows Integration settings
+with the startup option disabled.
+
+Windows startup registration now uses `reg.exe` directly instead of building
+PowerShell registry commands dynamically.
+
+Also changes the Settings label:
+
+    Show seconds
+
+to:
+
+    Show seconds on screensaver
+
+to make clear that wallpaper mode remains minute-granularity.

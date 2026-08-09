@@ -59,15 +59,63 @@ async function restoreScreenSaver(state) {
 
 async function setStartup(enabled, exePath, launchArgs = "") {
   const command = `"${exePath}"${launchArgs ? ` ${launchArgs}` : ""}`;
-  const script = enabled ? `
-    $p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-    New-Item -Path $p -Force | Out-Null
-    Set-ItemProperty -Path $p -Name 'Matchday Desktop' -Value '${q(command)}'
-  ` : `
-    $p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-    Remove-ItemProperty -Path $p -Name 'Matchday Desktop' -ErrorAction SilentlyContinue
-  `;
-  await ps(script);
+
+  if (enabled) {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "reg.exe",
+        [
+          "ADD",
+          "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "/v",
+          "Matchday Desktop",
+          "/t",
+          "REG_SZ",
+          "/d",
+          command,
+          "/f"
+        ],
+        { windowsHide: true },
+        (error, stdout, stderr) => {
+          if (error) {
+            reject(new Error((stderr || stdout || error.message).trim()));
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+  } else {
+    await new Promise((resolve, reject) => {
+      execFile(
+        "reg.exe",
+        [
+          "DELETE",
+          "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "/v",
+          "Matchday Desktop",
+          "/f"
+        ],
+        { windowsHide: true },
+        (error, stdout, stderr) => {
+          // reg.exe returns exit code 1 when the value does not exist.
+          // That is already the desired end-state, so treat it as success.
+          const combined = `${stdout || ""}\n${stderr || ""}`;
+
+          if (
+            error &&
+            !combined.toLowerCase().includes("unable to find") &&
+            !combined.toLowerCase().includes("cannot find")
+          ) {
+            reject(new Error((stderr || stdout || error.message).trim()));
+            return;
+          }
+
+          resolve();
+        }
+      );
+    });
+  }
 }
 
 module.exports = { getScreenSaverState, setMatchdayScreenSaver, restoreScreenSaver, setStartup };
