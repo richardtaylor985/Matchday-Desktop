@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2g1",
-  "channel": "windows-startup-fix",
+  "version": "3.2g2",
+  "channel": "packaged-native-resources-fix",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }

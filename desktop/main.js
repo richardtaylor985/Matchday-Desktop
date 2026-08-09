@@ -8,6 +8,15 @@ const PRODUCT_URL =
   process.env.MATCHDAY_DESKTOP_URL ||
   "https://matchday-desktop.vercel.app/apps/matchday-desktop/index.html";
 
+
+function nativeScriptPath(filename) {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "desktop-scripts", filename);
+  }
+
+  return path.join(__dirname, filename);
+}
+
 const args = process.argv.slice(1).map(v => String(v).toLowerCase());
 const isDev = args.includes("--dev");
 const isUninstallCleanup = args.includes("--uninstall-cleanup");
@@ -234,7 +243,7 @@ function updateIntegrationConfig(patch) {
 }
 
 async function getCurrentWallpaperState() {
-  const script = path.join(__dirname, "get-wallpaper-state.ps1");
+  const script = nativeScriptPath("get-wallpaper-state.ps1");
   const result = await powershellFile(script);
   return result ? JSON.parse(result) : {};
 }
@@ -243,7 +252,7 @@ async function restorePreviousWallpaper(state = readUserConfig()) {
   const previous = state.previousWallpaper;
   if (!previous?.path) return false;
 
-  const script = path.join(__dirname, "restore-wallpaper.ps1");
+  const script = nativeScriptPath("restore-wallpaper.ps1");
 
   await powershellFile(script, [
     "-ImagePath", previous.path,
@@ -427,7 +436,7 @@ async function captureAndApplyDynamicWallpaper() {
   const outputPath = path.join(wallpaperDir, "matchday-desktop.png");
   fs.writeFileSync(outputPath, image.toPNG());
 
-  const setter = path.join(__dirname, "set-wallpaper.ps1");
+  const setter = nativeScriptPath("set-wallpaper.ps1");
   const result = await powershellFile(setter, [
     "-ImagePath", outputPath
   ]);

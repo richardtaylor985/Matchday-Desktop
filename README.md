@@ -733,3 +733,29 @@ to:
     Show seconds on screensaver
 
 to make clear that wallpaper mode remains minute-granularity.
+
+## Stage 3.2g2 — Packaged Native Resource Fix
+
+Installed builds previously tried to execute PowerShell helpers from paths such as:
+
+    resources/app.asar/desktop/get-wallpaper-state.ps1
+
+`app.asar` is an Electron virtual archive. External programs such as PowerShell
+cannot execute a `.ps1` directly from that virtual path.
+
+3.2g2 packages all `desktop/*.ps1` files as real files under:
+
+    resources/desktop-scripts/
+
+The Electron main process resolves native scripts with `process.resourcesPath`
+when packaged and continues using `desktop/` directly during development.
+
+After building, verify the unpacked package with:
+
+    CHECK-3.2G2-PACKAGED-RESOURCES.bat
+
+Expected files:
+
+    dist/win-unpacked/resources/desktop-scripts/set-wallpaper.ps1
+    dist/win-unpacked/resources/desktop-scripts/get-wallpaper-state.ps1
+    dist/win-unpacked/resources/desktop-scripts/restore-wallpaper.ps1
