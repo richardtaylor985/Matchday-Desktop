@@ -106,6 +106,9 @@ async function loadWindowsIntegrationSettings() {
     document.getElementById("useMatchdayScreensaver").checked =
       state.useScreenSaver === true;
 
+    document.getElementById("useMatchdayLiveDesktop").checked =
+      state.useLiveDesktop === true;
+
     document.getElementById("startMatchdayWindows").checked =
       state.startWithWindows === true;
 
@@ -139,6 +142,8 @@ async function saveWindowsIntegrationSettings() {
     const saved = await window.matchdayWindows.saveSettings({
       useScreenSaver:
         document.getElementById("useMatchdayScreensaver").checked,
+      useLiveDesktop:
+        document.getElementById("useMatchdayLiveDesktop").checked,
       startWithWindows:
         document.getElementById("startMatchdayWindows").checked,
       timeoutSeconds:

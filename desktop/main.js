@@ -1,6 +1,7 @@
-const { app, BrowserWindow, globalShortcut, shell, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, globalShortcut, shell, dialog, ipcMain, screen } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { execFile } = require("child_process");
 const integration = require("./windows-integration");
 
 const PRODUCT_URL =
@@ -10,6 +11,7 @@ const PRODUCT_URL =
 const args = process.argv.slice(1).map(v => String(v).toLowerCase());
 const isDev = args.includes("--dev");
 const isUninstallCleanup = args.includes("--uninstall-cleanup");
+const isWallpaperMode = args.includes("--wallpaper");
 let mainWindow = null;
 let armed = false;
 let lastMouse = null;
@@ -95,7 +97,9 @@ function registerIntegrationIpc() {
       await integration.restoreScreenSaver(current.previousScreenSaver);
     }
 
-    await integration.setStartup(!!settings.startWithWindows, process.execPath);
+    const shouldStart = !!settings.startWithWindows || !!settings.useLiveDesktop;
+    const launchArgs = settings.useLiveDesktop ? "--wallpaper" : "";
+    await integration.setStartup(shouldStart, process.execPath, launchArgs);
     writeUserConfig(next);
     return next;
   });
@@ -150,6 +154,94 @@ function installDismissal() {
   });
 }
 
+
+function nativeWindowHandleAsUInt64(win) {
+  const buffer = win.getNativeWindowHandle();
+  if (buffer.length >= 8) return buffer.readBigUInt64LE(0).toString();
+  return BigInt(buffer.readUInt32LE(0)).toString();
+}
+
+function attachWindowToDesktop(win) {
+  return new Promise((resolve, reject) => {
+    const display = screen.getPrimaryDisplay();
+    const bounds = display.bounds;
+    const hwnd = nativeWindowHandleAsUInt64(win);
+    const script = path.join(__dirname, "attach-to-desktop.ps1");
+
+    execFile(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy", "Bypass",
+        "-File", script,
+        "-ChildHwnd", hwnd,
+        "-X", String(bounds.x),
+        "-Y", String(bounds.y),
+        "-Width", String(bounds.width),
+        "-Height", String(bounds.height)
+      ],
+      { windowsHide: true },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error((stderr || stdout || error.message).trim()));
+          return;
+        }
+        resolve((stdout || "").trim());
+      }
+    );
+  });
+}
+
+function createWallpaperWindow() {
+  const display = screen.getPrimaryDisplay();
+
+  mainWindow = new BrowserWindow({
+    title: "Matchday Desktop Live Background",
+    x: display.bounds.x,
+    y: display.bounds.y,
+    width: display.bounds.width,
+    height: display.bounds.height,
+    frame: false,
+    backgroundColor: "#03070c",
+    show: true,
+    focusable: false,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: path.join(__dirname, "preload.js")
+    }
+  });
+
+  mainWindow.setIgnoreMouseEvents(true, { forward: false });
+  mainWindow.loadURL(PRODUCT_URL);
+
+  mainWindow.webContents.once("did-finish-load", async () => {
+    try {
+      await attachWindowToDesktop(mainWindow);
+      console.log("Matchday Desktop attached behind desktop icons.");
+    } catch (error) {
+      console.error("Live desktop attachment failed:", error);
+      dialog.showErrorBox(
+        "Matchday Desktop Live Background",
+        `Could not attach Matchday Desktop behind the desktop icons.\n\n${error.message || error}`
+      );
+      app.quit();
+    }
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
+
 function createWindow({ fullScreen = false, kiosk = false, settings = false } = {}) {
   mainWindow = new BrowserWindow({
     title: "Matchday Desktop",
@@ -199,6 +291,11 @@ app.whenReady().then(async () => {
   }
 
   registerIntegrationIpc();
+
+  if (isWallpaperMode) {
+    createWallpaperWindow();
+    return;
+  }
 
   if (mode === "screensaver") {
     createWindow({ fullScreen: true, kiosk: true });

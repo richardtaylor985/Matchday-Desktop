@@ -502,3 +502,23 @@ Build:
 Expected installer:
 
     dist/Matchday-Desktop-Setup-3.1.6.exe
+
+## Stage 3.2a — Experimental Live Desktop Background
+
+Test manually:
+
+    RUN-LIVE-DESKTOP.bat
+
+or:
+
+    npm run desktop:wallpaper
+
+Settings adds:
+
+    Use Matchday Desktop as my live desktop background (Experimental)
+
+When enabled, Matchday registers a Windows startup command using `--wallpaper`.
+
+3.2a is intentionally limited to the primary display. The existing Windows static
+wallpaper is not replaced or deleted; it remains underneath Matchday and returns when
+Live Desktop mode stops.

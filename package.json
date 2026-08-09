@@ -1,6 +1,6 @@
 {
   "name": "matchday-desktop",
-  "version": "3.1.6",
+  "version": "3.2.0",
   "private": true,
   "description": "Matchday Desktop football screensaver and desktop application",
   "main": "desktop/main.js",
@@ -14,7 +14,8 @@
     "build:installer": "npm run build:unpacked && electron-builder --win nsis --prepackaged dist/win-unpacked",
     "build:release": "npm run build:installer",
     "desktop:fullscreen": "electron . --fullscreen",
-    "build:unpacked": "electron-builder --win dir && node desktop/prepare-scr.js"
+    "build:unpacked": "electron-builder --win dir && node desktop/prepare-scr.js",
+    "desktop:wallpaper": "electron . --wallpaper"
   },
   "devDependencies": {
     "electron": "^37.2.0",

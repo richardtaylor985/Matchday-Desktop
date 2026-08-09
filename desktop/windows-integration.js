@@ -57,13 +57,14 @@ async function restoreScreenSaver(state) {
   await ps(script);
 }
 
-async function setStartup(enabled, exePath) {
+async function setStartup(enabled, exePath, launchArgs = "") {
+  const command = `"${exePath}"${launchArgs ? ` ${launchArgs}` : ""}`;
   const script = enabled ? `
-    $p='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+    $p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
     New-Item -Path $p -Force | Out-Null
-    Set-ItemProperty -Path $p -Name 'Matchday Desktop' -Value '"${q(exePath)}"'
+    Set-ItemProperty -Path $p -Name 'Matchday Desktop' -Value '${q(command)}'
   ` : `
-    $p='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+    $p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
     Remove-ItemProperty -Path $p -Name 'Matchday Desktop' -ErrorAction SilentlyContinue
   `;
   await ps(script);

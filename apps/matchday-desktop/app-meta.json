@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.1c",
-  "channel": "clean-install-preview",
+  "version": "3.2a",
+  "channel": "live-desktop-experimental",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }
