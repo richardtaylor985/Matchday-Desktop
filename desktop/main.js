@@ -103,7 +103,7 @@ async function runUninstallCleanup() {
 function registerIntegrationIpc() {
   ipcMain.handle("matchday:get-windows-settings", async () => readUserConfig());
 
-  ipcMain.handle("matchday:set-selected-club", async (_event, club) => {
+  ipcMain.handle("matchday:set-selected-club", async (event, club) => {
     const normalized = String(club || "").trim().toLowerCase();
 
     if (!normalized) {
@@ -111,12 +111,26 @@ function registerIntegrationIpc() {
     }
 
     const current = readUserConfig();
+
+    // A hosted renderer always persists its resolved club back to the native
+    // shell. If it is already the native selected club, do nothing. This is
+    // particularly important for the hidden wallpaper renderer: reloading it
+    // here would create an endless load -> persist -> reload loop.
+    if (current.selectedClub === normalized) {
+      return current;
+    }
+
     const next = { ...current, selectedClub: normalized };
     writeUserConfig(next);
 
-    // If Dynamic Wallpaper is currently running in this process, switch it
-    // immediately instead of waiting for its next scheduled refresh.
-    if (dynamicWallpaperWindow && !dynamicWallpaperWindow.isDestroyed()) {
+    // A genuine club change from the visible app should refresh an existing
+    // wallpaper renderer immediately. Never reload the renderer that sent the
+    // persistence call itself.
+    if (
+      dynamicWallpaperWindow &&
+      !dynamicWallpaperWindow.isDestroyed() &&
+      event.sender.id !== dynamicWallpaperWindow.webContents.id
+    ) {
       await dynamicWallpaperWindow.loadURL(hostedUrl({ wallpaper: true }));
     }
 
@@ -376,27 +390,77 @@ async function captureAndApplyDynamicWallpaper() {
 
   dynamicWallpaperWindow.setSize(width, height, false);
 
-  // Wait for the hosted dashboard to explicitly report that club selection,
-  // theme application and dashboard data initialization have completed.
-  const readyDeadline = Date.now() + 20000;
-  let readyState = false;
+  // Wait for either the explicit hosted ready flag or a DOM state that proves
+  // the dashboard has rendered successfully. The latter protects wallpaper
+  // capture from future changes to the hosted boot implementation.
+  const readyDeadline = Date.now() + 30000;
+  let readyState = null;
 
   while (Date.now() < readyDeadline) {
     try {
-      readyState = await dynamicWallpaperWindow.webContents.executeJavaScript(
-        `Boolean(window.__MATCHDAY_READY__ || document.documentElement.dataset.matchdayReady === "1")`
-      );
+      readyState = await dynamicWallpaperWindow.webContents.executeJavaScript(`
+        (() => {
+          const explicit =
+            Boolean(window.__MATCHDAY_READY__) ||
+            document.documentElement.dataset.matchdayReady === "1";
+
+          const selector = document.getElementById("clubSelector");
+          const appShell = document.getElementById("appShell");
+          const matchDate = (document.getElementById("matchDate")?.textContent || "").trim();
+          const homeTeam = (document.getElementById("homeTeam")?.textContent || "").trim();
+          const awayTeam = (document.getElementById("awayTeam")?.textContent || "").trim();
+          const dataStatus = (document.getElementById("dataStatus")?.textContent || "").trim().toUpperCase();
+          const rows = document.querySelectorAll("#tableBody tr").length;
+
+          const selectorGone = !selector || selector.hidden === true;
+          const shellVisible = !appShell || appShell.hidden !== true;
+          const fixtureReady =
+            matchDate &&
+            !matchDate.toLowerCase().includes("loading") &&
+            homeTeam &&
+            awayTeam &&
+            homeTeam !== "—" &&
+            awayTeam !== "—";
+
+          const dataReady =
+            rows > 0 &&
+            !dataStatus.includes("CONNECTING") &&
+            !dataStatus.includes("LOADING");
+
+          return {
+            ready: explicit || (selectorGone && shellVisible && fixtureReady && dataReady),
+            explicit,
+            selectorGone,
+            shellVisible,
+            fixtureReady,
+            dataReady,
+            matchDate,
+            homeTeam,
+            awayTeam,
+            rows,
+            dataStatus
+          };
+        })()
+      `);
     } catch (error) {
-      readyState = false;
+      readyState = {
+        ready: false,
+        error: String(error?.message || error)
+      };
     }
 
-    if (readyState) break;
+    if (readyState?.ready) break;
     await new Promise(resolve => setTimeout(resolve, 250));
   }
 
-  if (!readyState) {
-    throw new Error("Matchday dashboard did not become ready within 20 seconds.");
+  if (!readyState?.ready) {
+    throw new Error(
+      `Matchday dashboard did not become capture-ready within 30 seconds. ` +
+      `Last state: ${JSON.stringify(readyState)}`
+    );
   }
+
+  console.log("Dynamic wallpaper ready:", readyState);
 
   // Run in an IIFE so local declarations do not leak into the page's global
   // lexical scope and can safely execute on every 60-second refresh.

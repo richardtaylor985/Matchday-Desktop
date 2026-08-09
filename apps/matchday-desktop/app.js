@@ -626,6 +626,61 @@ async function initialiseTheme() {
   }
 }
 
+
+async function waitForMatchdayVisualAssets() {
+  const imageElements = Array.from(document.images || []);
+
+  await Promise.allSettled(
+    imageElements.map(image => {
+      if (image.complete) {
+        if (typeof image.decode === "function") {
+          return image.decode().catch(() => undefined);
+        }
+        return Promise.resolve();
+      }
+
+      return new Promise(resolve => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", resolve, { once: true });
+        setTimeout(resolve, 5000);
+      }).then(() => {
+        if (typeof image.decode === "function") {
+          return image.decode().catch(() => undefined);
+        }
+      });
+    })
+  );
+
+  try {
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+  } catch {
+    // Font readiness is cosmetic and must not block the dashboard.
+  }
+
+  // CSS hero artwork is a background image, not an <img>. Preload the resolved
+  // custom-property URL explicitly so Coventry/Arsenal captures don't race it.
+  const heroValue = getComputedStyle(document.documentElement)
+    .getPropertyValue("--hero-image")
+    .trim();
+
+  const match = heroValue.match(/^url\(["']?(.*?)["']?\)$/);
+
+  if (match?.[1]) {
+    await new Promise(resolve => {
+      const preload = new Image();
+      preload.onload = resolve;
+      preload.onerror = resolve;
+      preload.src = match[1];
+
+      if (preload.complete) resolve();
+      setTimeout(resolve, 7000);
+    });
+  }
+}
+
+
 async function initialiseSelectedClub() {
   initialiseLoadingState();
   updateCountdown();
@@ -645,9 +700,12 @@ async function bootMatchdayDesktop() {
     if (club) {
       await initialiseSelectedClub();
 
-      // Wallpaper and other native hosts can wait for this instead of guessing
-      // how long API/theme rendering will take.
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      // Wallpaper and other native hosts wait for the dashboard AND its visual
+      // assets to be paint-ready before capture.
+      await waitForMatchdayVisualAssets();
+      await new Promise(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      );
       window.__MATCHDAY_READY__ = true;
       document.documentElement.dataset.matchdayReady = "1";
       window.dispatchEvent(new CustomEvent("matchday-ready"));

@@ -777,3 +777,30 @@ separate Electron renderer sessions sharing localStorage.
 
 When a club is selected while Dynamic Wallpaper is already running in the same native
 process, its hidden renderer is reloaded immediately with the newly selected club.
+
+## Stage 3.2g4 — Wallpaper Club-Switch Reliability
+
+3.2g3 exposed a reload loop in the hidden Dynamic Wallpaper renderer:
+
+    renderer loads ?club=arsenal
+    -> renderer persists arsenal to Electron
+    -> Electron reloads renderer
+    -> renderer persists arsenal again
+    -> repeat
+
+3.2g4 makes same-club native persistence a no-op. An existing wallpaper renderer
+is reloaded only when the selected club genuinely changes and the persistence call
+came from a different renderer.
+
+Wallpaper capture readiness is also hardened. Capture may proceed when either:
+
+- the explicit Matchday ready flag is present; or
+- the club selector is gone, app shell is visible, fixture data is populated,
+  and league-table/data rendering is complete.
+
+The readiness timeout is increased to 30 seconds and now logs the final DOM state
+if it cannot capture.
+
+Before the hosted app sets its ready flag, Matchday also waits for image decoding,
+document fonts and the CSS hero background image. This reduces slow Coventry hero
+transitions and prevents wallpaper capture racing the artwork.

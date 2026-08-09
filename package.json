@@ -1,6 +1,6 @@
 {
   "name": "matchday-desktop",
-  "version": "3.2.10",
+  "version": "3.2.11",
   "private": true,
   "description": "Matchday Desktop football screensaver and desktop application",
   "main": "desktop/main.js",
