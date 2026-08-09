@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.1b",
-  "channel": "windows-integration",
+  "version": "3.1b4",
+  "channel": "windows-integration-consolidated",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }

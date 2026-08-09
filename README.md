@@ -441,3 +441,22 @@ The installer build now creates `Matchday Desktop.scr` inside the packaged app
 before NSIS packages the installer.
 
 Desktop background/live wallpaper integration is intentionally deferred to 3.2.
+
+## Stage 3.1b4 — Consolidated Windows Integration
+
+This build consolidates all 3.1b fixes into one package.
+
+The Settings panel no longer silently hides Windows Integration when the Electron
+native bridge is unavailable. Instead it displays a diagnostic message asking the
+user to reinstall the current Matchday Desktop build.
+
+Before building/installing, run:
+
+    CHECK-3.1B-WINDOWS-INTEGRATION.bat
+
+All four checks should report OK.
+
+The Windows Integration section is part of Config/Settings, not the NSIS installer
+wizard itself.
+
+Live desktop/background integration is still intentionally deferred to Stage 3.2.

@@ -85,12 +85,20 @@ async function loadWindowsIntegrationSettings() {
 
   if (!section) return;
 
+  section.style.display = "";
+
   if (!window.matchdayWindows) {
-    section.style.display = "none";
+    document.getElementById("useMatchdayScreensaver").disabled = true;
+    document.getElementById("startMatchdayWindows").disabled = true;
+    document.getElementById("matchdayScreenSaverTimeout").disabled = true;
+    document.getElementById("saveWindowsIntegration").disabled = true;
+
+    if (status) {
+      status.textContent =
+        "Windows integration bridge unavailable. Reinstall the current Matchday Desktop build.";
+    }
     return;
   }
-
-  section.style.display = "";
 
   try {
     const state = await window.matchdayWindows.getSettings();
