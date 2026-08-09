@@ -631,6 +631,9 @@ body.state-full-time .match-state-banner strong {
   z-index: 1200;
   display: grid;
   place-items: center;
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
   background: rgba(0,0,0,.72);
   backdrop-filter: blur(8px);
 }
@@ -640,7 +643,10 @@ body.state-full-time .match-state-banner strong {
 }
 
 .settings-card {
-  width: min(480px, calc(100vw - 40px));
+  width: min(520px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  box-sizing: border-box;
   border: 1px solid rgba(255,255,255,.15);
   border-radius: 14px;
   padding: 26px;
@@ -650,6 +656,13 @@ body.state-full-time .match-state-banner strong {
 }
 
 .settings-heading {
+  position: sticky;
+  top: -26px;
+  z-index: 2;
+  margin-left: -26px;
+  margin-right: -26px;
+  padding: 26px 26px 12px;
+  background: #0b1119;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -735,4 +748,28 @@ body.state-full-time .match-state-banner strong {
   font-size: 10px;
   font-weight: 900;
   letter-spacing: .14em;
+}
+
+
+.settings-windows {
+  margin-top: 20px;
+  padding: 10px 0 4px;
+  border-top: 2px solid var(--sky, #55bff4);
+}
+
+.settings-windows-title {
+  padding: 8px 0 10px;
+  color: var(--sky-soft, #8dd8ff);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .15em;
+}
+
+.settings-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-card::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.18);
+  border-radius: 8px;
 }
