@@ -103,6 +103,27 @@ async function runUninstallCleanup() {
 function registerIntegrationIpc() {
   ipcMain.handle("matchday:get-windows-settings", async () => readUserConfig());
 
+  ipcMain.handle("matchday:set-selected-club", async (_event, club) => {
+    const normalized = String(club || "").trim().toLowerCase();
+
+    if (!normalized) {
+      throw new Error("Selected club is required.");
+    }
+
+    const current = readUserConfig();
+    const next = { ...current, selectedClub: normalized };
+    writeUserConfig(next);
+
+    // If Dynamic Wallpaper is currently running in this process, switch it
+    // immediately instead of waiting for its next scheduled refresh.
+    if (dynamicWallpaperWindow && !dynamicWallpaperWindow.isDestroyed()) {
+      await dynamicWallpaperWindow.loadURL(hostedUrl({ wallpaper: true }));
+    }
+
+    return next;
+  });
+
+
   ipcMain.handle("matchday:save-windows-settings", async (_event, settings) => {
     const current = readUserConfig();
     const next = { ...current, ...settings, configured: true };
@@ -463,7 +484,7 @@ function createDynamicWallpaperRenderer() {
     }
   });
 
-  dynamicWallpaperWindow.loadURL(`${PRODUCT_URL}${PRODUCT_URL.includes("?") ? "&" : "?"}wallpaperMode=1`);
+  dynamicWallpaperWindow.loadURL(hostedUrl({ wallpaper: true }));
 
   dynamicWallpaperWindow.webContents.once("did-finish-load", async () => {
     try {
@@ -498,6 +519,22 @@ function createDynamicWallpaperRenderer() {
 }
 
 
+
+function hostedUrl({ settings = false, wallpaper = false } = {}) {
+  const config = readUserConfig();
+  const params = new URLSearchParams();
+
+  if (settings) params.set("openSettings", "1");
+  if (wallpaper) params.set("wallpaperMode", "1");
+  if (config.selectedClub) params.set("club", config.selectedClub);
+
+  const query = params.toString();
+
+  return query
+    ? `${PRODUCT_URL}${PRODUCT_URL.includes("?") ? "&" : "?"}${query}`
+    : PRODUCT_URL;
+}
+
 function createWindow({ fullScreen = false, kiosk = false, settings = false } = {}) {
   mainWindow = new BrowserWindow({
     title: "Matchday Desktop",
@@ -521,7 +558,7 @@ function createWindow({ fullScreen = false, kiosk = false, settings = false } = 
     }
   });
 
-  const target = settings ? `${PRODUCT_URL}?openSettings=1` : PRODUCT_URL;
+  const target = hostedUrl({ settings });
 
   mainWindow.loadURL(target).catch(error => {
     console.error("Matchday Desktop load failed:", error);

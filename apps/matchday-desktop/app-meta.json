@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2g2",
-  "channel": "packaged-native-resources-fix",
+  "version": "3.2g3",
+  "channel": "native-club-sync",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }

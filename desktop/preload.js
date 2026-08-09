@@ -1,11 +1,13 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("matchdayWindows", {
-  bridgeVersion: "3.1b5",
+  bridgeVersion: "3.2g3",
   getSettings: () =>
     ipcRenderer.invoke("matchday:get-windows-settings"),
   saveSettings: settings =>
-    ipcRenderer.invoke("matchday:save-windows-settings", settings)
+    ipcRenderer.invoke("matchday:save-windows-settings", settings),
+  setSelectedClub: club =>
+    ipcRenderer.invoke("matchday:set-selected-club", club)
 });
 
 window.addEventListener("DOMContentLoaded", () => {

@@ -759,3 +759,21 @@ Expected files:
     dist/win-unpacked/resources/desktop-scripts/set-wallpaper.ps1
     dist/win-unpacked/resources/desktop-scripts/get-wallpaper-state.ps1
     dist/win-unpacked/resources/desktop-scripts/restore-wallpaper.ps1
+
+## Stage 3.2g3 — Native Club Synchronisation
+
+Fixes Windows screensaver instances becoming stuck on the "Choose your club" screen.
+
+The selected club is now written both to browser localStorage and Electron's native
+user configuration.
+
+Every native hosted renderer is launched with an explicit club query parameter:
+
+    ?club=coventry-city
+    ?club=arsenal
+
+This means Desktop, Config, Screensaver and Dynamic Wallpaper no longer depend on
+separate Electron renderer sessions sharing localStorage.
+
+When a club is selected while Dynamic Wallpaper is already running in the same native
+process, its hidden renderer is reloaded immediately with the newly selected club.

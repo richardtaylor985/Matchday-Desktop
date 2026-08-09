@@ -1,3 +1,14 @@
+
+async function persistClubToNativeShell(slug) {
+  try {
+    if (window.matchdayWindows?.setSelectedClub) {
+      await window.matchdayWindows.setSelectedClub(slug);
+    }
+  } catch (error) {
+    console.warn("Could not persist selected club to native shell:", error);
+  }
+}
+
 const MATCHDAY_SELECTED_CLUB_KEY = "matchday-desktop:selected-club:v1";
 
 async function fetchSupportedClubs() {
@@ -43,10 +54,11 @@ function clearClubSelection() {
   window.location.href = window.location.pathname;
 }
 
-function selectClub(club) {
+async function selectClub(club) {
   window.MATCHDAY_CONFIG.club = club.slug;
   window.MATCHDAY_CONFIG.theme = club.themeKey;
   storeClubSlug(club.slug);
+  await persistClubToNativeShell(club.slug);
 
   const selector = document.getElementById("clubSelector");
   const appShell = document.getElementById("appShell");
@@ -66,7 +78,7 @@ async function resolveClubSelection() {
     const match = clubs.find(club => club.slug === desired);
 
     if (match) {
-      selectClub(match);
+      await selectClub(match);
       return match;
     }
   }
@@ -95,9 +107,15 @@ function renderClubSelector(clubs) {
       <span class="club-choice-name">${club.displayName}</span>
     `;
 
-    button.addEventListener("click", () => {
-      selectClub(club);
-      initialiseSelectedClub();
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+
+      try {
+        await selectClub(club);
+        await initialiseSelectedClub();
+      } finally {
+        button.disabled = false;
+      }
     });
 
     list.appendChild(button);
