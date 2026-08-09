@@ -644,3 +644,24 @@ The hidden wallpaper renderer loads the hosted dashboard with:
 
 so wallpaper-specific presentation can be handled without affecting desktop-app or
 screensaver modes.
+
+## Stage 3.2f1 — Dynamic Wallpaper Readiness / Refresh Fix
+
+Fixes two issues found during 3.2f testing:
+
+1. The pre-capture JavaScript previously declared `const now` at page-global scope.
+   Re-running the script on later refreshes could throw a redeclaration error.
+   The injected code now runs inside an IIFE with scoped local variables.
+
+2. The first wallpaper capture used a fixed 1.2-second delay and could capture the
+   dashboard while fixture/theme/API data was still loading.
+
+The hosted dashboard now exposes:
+
+    window.__MATCHDAY_READY__ = true
+
+after club initialization, theme/data rendering and two animation frames. The hidden
+wallpaper renderer waits up to 20 seconds for that explicit signal before capturing.
+
+This means Windows should never receive the temporary "Loading fixture..." frame
+during normal successful startup.

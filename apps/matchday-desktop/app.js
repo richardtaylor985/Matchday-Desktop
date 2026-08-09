@@ -636,6 +636,7 @@ async function initialiseSelectedClub() {
 }
 
 async function bootMatchdayDesktop() {
+  window.__MATCHDAY_READY__ = false;
   initialiseDisplayMode();
   loadProductMetadata();
   try {
@@ -644,12 +645,21 @@ async function bootMatchdayDesktop() {
     if (club) {
       await initialiseSelectedClub();
 
+      // Wallpaper and other native hosts can wait for this instead of guessing
+      // how long API/theme rendering will take.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      window.__MATCHDAY_READY__ = true;
+      document.documentElement.dataset.matchdayReady = "1";
+      window.dispatchEvent(new CustomEvent("matchday-ready"));
+
       const params = new URLSearchParams(window.location.search);
       if (params.get("openSettings") === "1" && typeof openSettings === "function") {
         openSettings();
       }
     }
   } catch (error) {
+    window.__MATCHDAY_READY__ = false;
+    document.documentElement.dataset.matchdayReady = "error";
     console.error("Unable to initialise Matchday Desktop:", error);
 
     const selector = document.getElementById("clubSelector");

@@ -232,47 +232,73 @@ async function captureAndApplyDynamicWallpaper() {
 
   dynamicWallpaperWindow.setSize(width, height, false);
 
-  // Give the remote dashboard a moment to finish any current layout/data update.
-  await new Promise(resolve => setTimeout(resolve, 1200));
+  // Wait for the hosted dashboard to explicitly report that club selection,
+  // theme application and dashboard data initialization have completed.
+  const readyDeadline = Date.now() + 20000;
+  let readyState = false;
 
-  // Wallpaper is a static capture, so force time-sensitive UI into a known,
-  // current state immediately before capture.
+  while (Date.now() < readyDeadline) {
+    try {
+      readyState = await dynamicWallpaperWindow.webContents.executeJavaScript(
+        `Boolean(window.__MATCHDAY_READY__ || document.documentElement.dataset.matchdayReady === "1")`
+      );
+    } catch (error) {
+      readyState = false;
+    }
+
+    if (readyState) break;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+
+  if (!readyState) {
+    throw new Error("Matchday dashboard did not become ready within 20 seconds.");
+  }
+
+  // Run in an IIFE so local declarations do not leak into the page's global
+  // lexical scope and can safely execute on every 60-second refresh.
   await dynamicWallpaperWindow.webContents.executeJavaScript(`
-    document.body.classList.add("dynamic-wallpaper-mode");
+    (() => {
+      document.body.classList.add("dynamic-wallpaper-mode");
 
-    if (typeof updateClock === "function") {
-      updateClock();
-    }
+      if (typeof updateClock === "function") {
+        updateClock();
+      }
 
-    if (typeof updateCountdown === "function") {
-      updateCountdown();
-    }
+      if (typeof updateCountdown === "function") {
+        updateCountdown();
+      }
 
-    // Defensive fallback in case hosted function names ever change.
-    const now = new Date();
-    const heroTime = document.getElementById("heroTime");
-    const heroDate = document.getElementById("heroDate");
+      const currentTime = new Date();
+      const heroTime = document.getElementById("heroTime");
+      const heroDate = document.getElementById("heroDate");
 
-    if (heroTime && (!heroTime.textContent || heroTime.textContent.includes("--"))) {
-      heroTime.textContent = now.toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      });
-    }
+      if (heroTime && (!heroTime.textContent || heroTime.textContent.includes("--"))) {
+        heroTime.textContent = currentTime.toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        });
+      }
 
-    if (heroDate && !heroDate.textContent) {
-      heroDate.textContent = now.toLocaleDateString("en-GB", {
-        weekday: "long",
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-      }).toUpperCase();
-    }
+      if (heroDate && (!heroDate.textContent || heroDate.textContent.includes("--"))) {
+        heroDate.textContent = currentTime.toLocaleDateString("en-GB", {
+          weekday: "long",
+          day: "2-digit",
+          month: "long",
+          year: "numeric"
+        }).toUpperCase();
+      }
+
+      return {
+        ready: Boolean(window.__MATCHDAY_READY__),
+        time: heroTime ? heroTime.textContent : null,
+        date: heroDate ? heroDate.textContent : null
+      };
+    })()
   `);
 
   // Allow the DOM repaint to complete before capture.
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 150));
 
   const image = await dynamicWallpaperWindow.webContents.capturePage({
     x: 0,
@@ -324,7 +350,7 @@ function createDynamicWallpaperRenderer() {
         try {
           await captureAndApplyDynamicWallpaper();
         } catch (error) {
-          console.error("Dynamic wallpaper refresh failed:", error);
+          console.error("Dynamic wallpaper refresh failed:", error?.stack || error);
         }
       }, DYNAMIC_WALLPAPER_INTERVAL_MS);
 
