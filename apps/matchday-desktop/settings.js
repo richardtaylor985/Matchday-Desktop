@@ -112,9 +112,10 @@ async function loadWindowsIntegrationSettings() {
     document.getElementById("matchdayScreenSaverTimeout").value =
       String(state.timeoutSeconds || 600);
 
-    if (!state.configured && status) {
-      status.textContent =
-        "Choose your Windows options, then save to complete first-run setup.";
+    if (status) {
+      status.textContent = state.configured
+        ? `Windows integration connected • bridge ${window.matchdayWindows.bridgeVersion || "ready"}`
+        : `Windows integration connected • bridge ${window.matchdayWindows.bridgeVersion || "ready"} • choose your options and save.`;
     }
   } catch (error) {
     if (status) {

@@ -808,3 +808,94 @@ body.state-full-time .match-state-banner strong {
   margin-top: 6px;
   line-height: 1.4;
 }
+
+
+/* Stage 3.1b5 compact Settings layout */
+.settings-overlay {
+  padding: 12px !important;
+}
+
+.settings-card {
+  width: min(540px, calc(100vw - 24px)) !important;
+  max-height: calc(100vh - 24px) !important;
+  padding: 18px 20px 14px !important;
+}
+
+.settings-heading {
+  top: -18px !important;
+  margin-left: -20px !important;
+  margin-right: -20px !important;
+  padding: 18px 20px 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.settings-heading h2 {
+  margin-top: 2px !important;
+  font-size: 28px !important;
+}
+
+.settings-close {
+  font-size: 26px !important;
+}
+
+.settings-group {
+  min-height: 42px !important;
+  gap: 10px !important;
+}
+
+.settings-group button,
+.settings-group select {
+  justify-self: end;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 6px 10px !important;
+  margin: 0 !important;
+}
+
+.settings-group > input[type="checkbox"] {
+  justify-self: end;
+}
+
+.settings-group small {
+  padding-bottom: 3px !important;
+  margin: 0 !important;
+}
+
+.settings-group small:empty {
+  display: none;
+}
+
+.settings-windows,
+#windowsIntegrationSettings {
+  margin-top: 10px !important;
+  padding-top: 5px !important;
+}
+
+.settings-windows-title {
+  padding: 6px 0 !important;
+}
+
+#windowsIntegrationStatus {
+  margin-top: 1px !important;
+  padding-bottom: 1px !important;
+}
+
+.settings-actions {
+  margin-top: 12px !important;
+}
+
+.settings-actions button {
+  min-width: 84px;
+  padding: 7px 14px !important;
+}
+
+.settings-meta {
+  margin-top: 8px !important;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  text-align: left;
+}
+
+.settings-card::-webkit-scrollbar {
+  width: 6px;
+}

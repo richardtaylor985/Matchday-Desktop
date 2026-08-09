@@ -460,3 +460,23 @@ The Windows Integration section is part of Config/Settings, not the NSIS install
 wizard itself.
 
 Live desktop/background integration is still intentionally deferred to Stage 3.2.
+
+## Stage 3.1b5 — Windows Bridge Fix
+
+The Windows integration bridge failure was caused by `desktop/preload.js`
+referencing `contextBridge` before importing it from Electron.
+
+3.1b5 fixes the preload initialization order and exposes:
+
+    window.matchdayWindows.bridgeVersion = "3.1b5"
+
+Settings polish in this build:
+
+- tighter vertical spacing;
+- consistent right-edge alignment for controls;
+- Save/Cancel above the version line;
+- version moved to the bottom-left;
+- less scrolling at normal Config window sizes.
+
+Because `preload.js` is packaged inside Electron, this build requires rebuilding
+and reinstalling Matchday Desktop.
