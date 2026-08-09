@@ -13,7 +13,7 @@ export default function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       service: "matchday-desktop-api",
-      version: "3.0b",
+      version: "3.1b",
       error: "Method not allowed"
     });
   }
@@ -30,7 +30,7 @@ export default function handler(req, res) {
 
   return res.status(200).json({
     service: "matchday-desktop-api",
-    version: "3.0b",
+    version: "3.1b",
     contract: "clubs-v1",
     clubs
   });

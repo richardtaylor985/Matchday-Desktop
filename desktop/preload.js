@@ -1,4 +1,10 @@
-const { ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("matchdayWindows", {
+  getSettings: () => ipcRenderer.invoke("matchday:get-windows-settings"),
+  saveSettings: settings => ipcRenderer.invoke("matchday:save-windows-settings", settings)
+});
+
+const { contextBridge, ipcRenderer } = require("electron");
 
 window.addEventListener("DOMContentLoaded", () => {
   let lastSent = 0;

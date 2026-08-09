@@ -1,5 +1,7 @@
 const { app, BrowserWindow, globalShortcut, shell, dialog, ipcMain } = require("electron");
 const path = require("path");
+const fs = require("fs");
+const integration = require("./windows-integration");
 
 const PRODUCT_URL =
   process.env.MATCHDAY_DESKTOP_URL ||
@@ -30,6 +32,47 @@ function getMode() {
 }
 
 const mode = getMode();
+
+const userConfigPath = () => path.join(app.getPath("userData"), "windows-integration.json");
+
+function readUserConfig() {
+  try { return JSON.parse(fs.readFileSync(userConfigPath(), "utf8")); }
+  catch { return {}; }
+}
+
+function writeUserConfig(value) {
+  fs.mkdirSync(path.dirname(userConfigPath()), { recursive: true });
+  fs.writeFileSync(userConfigPath(), JSON.stringify(value, null, 2), "utf8");
+}
+
+function installedScrPath() {
+  return path.join(path.dirname(process.execPath), "Matchday Desktop.scr");
+}
+
+function registerIntegrationIpc() {
+  ipcMain.handle("matchday:get-windows-settings", async () => readUserConfig());
+
+  ipcMain.handle("matchday:save-windows-settings", async (_event, settings) => {
+    const current = readUserConfig();
+    const next = { ...current, ...settings, configured: true };
+
+    if (settings.useScreenSaver) {
+      if (!current.previousScreenSaver) {
+        next.previousScreenSaver = await integration.getScreenSaverState();
+      }
+      const scr = installedScrPath();
+      if (!fs.existsSync(scr)) throw new Error(`Screensaver file not found: ${scr}`);
+      await integration.setMatchdayScreenSaver(scr, settings.timeoutSeconds || 600);
+    } else if (current.useScreenSaver && current.previousScreenSaver) {
+      await integration.restoreScreenSaver(current.previousScreenSaver);
+    }
+
+    await integration.setStartup(!!settings.startWithWindows, process.execPath);
+    writeUserConfig(next);
+    return next;
+  });
+}
+
 
 function quitSaver() {
   if (mode === "screensaver") app.quit();
@@ -120,6 +163,7 @@ function createWindow({ fullScreen = false, kiosk = false, settings = false } = 
 
 app.whenReady().then(() => {
   console.log("Matchday Desktop mode:", mode);
+  registerIntegrationIpc();
 
   if (mode === "screensaver") {
     createWindow({ fullScreen: true, kiosk: true });
@@ -129,7 +173,9 @@ app.whenReady().then(() => {
     console.log("Windows preview requested; preview is a no-op in Stage 3.0b.");
     app.quit();
   } else {
-    createWindow({ fullScreen: !isDev });
+    const forceFullScreen = args.includes("--fullscreen");
+    const firstRun = !readUserConfig().configured;
+    createWindow({ fullScreen: forceFullScreen, settings: firstRun });
 
     globalShortcut.register("F11", () => {
       if (mainWindow) mainWindow.setFullScreen(!mainWindow.isFullScreen());

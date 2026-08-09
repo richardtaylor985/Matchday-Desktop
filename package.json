@@ -1,16 +1,20 @@
 {
   "name": "matchday-desktop",
-  "version": "3.0.1",
+  "version": "3.1.1",
   "private": true,
-  "description": "Matchday Desktop Windows shell",
+  "description": "Matchday Desktop football screensaver and desktop application",
   "main": "desktop/main.js",
   "scripts": {
     "desktop": "electron .",
-    "desktop:dev": "electron . --dev",
+    "desktop:dev": "electron .",
     "build:win": "electron-builder --win nsis",
     "screensaver": "electron . /s",
     "screensaver:config": "electron . /c",
-    "build:scr": "electron-builder --win dir && node desktop/build-scr.js"
+    "build:scr": "electron-builder --win dir && node desktop/build-scr.js",
+    "build:installer": "npm run build:unpacked && electron-builder --win nsis --prepackaged dist/win-unpacked",
+    "build:release": "npm run build:installer",
+    "desktop:fullscreen": "electron . --fullscreen",
+    "build:unpacked": "electron-builder --win dir && node desktop/prepare-scr.js"
   },
   "devDependencies": {
     "electron": "^37.2.0",
@@ -28,15 +32,27 @@
     ],
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+      "createStartMenuShortcut": true,
+      "shortcutName": "Matchday Desktop",
+      "uninstallDisplayName": "Matchday Desktop",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "artifactName": "Matchday-Desktop-Setup-${version}.${ext}"
   },
   "engines": {
     "node": "22.x"

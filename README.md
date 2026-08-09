@@ -372,3 +372,72 @@ it properly.
 
 Windows `/p` preview is intentionally a clean no-op in 3.0b because embedding an
 Electron BrowserWindow in a foreign native HWND requires a Win32 native bridge.
+
+## Stage 3.1a — Installer Packaging
+
+Stage 3.1 begins Windows distribution.
+
+The Electron shell can now be packaged as a standard NSIS installer:
+
+    BUILD-INSTALLER.bat
+
+or:
+
+    npm run build:installer
+
+Expected output:
+
+    dist/Matchday-Desktop-Setup-3.1.0.exe
+
+The installer is configured as:
+
+- Windows x64
+- interactive installer (not one-click)
+- per-user installation
+- installation-directory selection enabled
+- Desktop shortcut
+- Start Menu shortcut
+- normal Windows uninstall entry
+- launch Matchday Desktop after installation
+
+The existing screensaver test build remains available through:
+
+    BUILD-SCREENSAVER.bat
+
+or build both installer and `.scr` test artifacts using:
+
+    BUILD-RELEASE.bat
+
+### Stage boundary
+
+3.1a packages the application but does NOT yet register Matchday Desktop as a
+Windows screensaver automatically.
+
+That registration/install integration belongs to Stage 3.1b.
+
+### Arsenal crest
+
+The Classic Arsenal theme now uses the clean user-supplied crest asset in both:
+
+    apps/arsenal-screensaver/
+    apps/matchday-desktop/
+
+No generated or cleaned-up substitute crest is used.
+
+## Stage 3.1b — Windows Screensaver Registration & First Run
+
+First normal launch now opens Settings until Windows integration has been saved.
+
+Settings adds:
+- Set Matchday Desktop as the active Windows screensaver.
+- Screensaver timeout selection.
+- Start Matchday Desktop with Windows.
+
+Before changing the active screensaver, Matchday stores the user's previous
+per-user Windows screensaver registry values in its user-data configuration.
+Turning Matchday screensaver integration off restores those saved values.
+
+The installer build now creates `Matchday Desktop.scr` inside the packaged app
+before NSIS packages the installer.
+
+Desktop background/live wallpaper integration is intentionally deferred to 3.2.
