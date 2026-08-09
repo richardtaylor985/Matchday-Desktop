@@ -1,6 +1,6 @@
 {
   "name": "matchday-desktop",
-  "version": "3.1.5",
+  "version": "3.1.6",
   "private": true,
   "description": "Matchday Desktop football screensaver and desktop application",
   "main": "desktop/main.js",
@@ -50,7 +50,8 @@
       "shortcutName": "Matchday Desktop",
       "uninstallDisplayName": "Matchday Desktop",
       "deleteAppDataOnUninstall": false,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "include": "build/installer.nsh"
     },
     "artifactName": "Matchday-Desktop-Setup-${version}.${ext}"
   },

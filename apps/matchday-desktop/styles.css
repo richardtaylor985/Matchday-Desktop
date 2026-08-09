@@ -899,3 +899,15 @@ body.state-full-time .match-state-banner strong {
 .settings-card::-webkit-scrollbar {
   width: 6px;
 }
+
+
+/* Stage 3.1c - native dropdown option contrast */
+.settings-group select {
+  color: #ffffff;
+  background-color: rgba(255,255,255,.05);
+}
+
+.settings-group select option {
+  color: #111111;
+  background: #ffffff;
+}

@@ -480,3 +480,25 @@ Settings polish in this build:
 
 Because `preload.js` is packaged inside Electron, this build requires rebuilding
 and reinstalling Matchday Desktop.
+
+## Stage 3.1c — Clean Install / Uninstall Hardening
+
+Changes:
+
+- fixes Windows native dropdown option contrast;
+- adds `--uninstall-cleanup` native mode;
+- NSIS uninstall invokes Matchday cleanup before removing application files;
+- restores the previously saved Windows screensaver configuration;
+- removes the Matchday Desktop Windows startup entry;
+- removes Matchday's Windows-integration state file;
+- adds `CHECK-3.1C-RELEASE.bat`;
+- adds a clean-machine acceptance-test checklist.
+
+Build:
+
+    CHECK-3.1C-RELEASE.bat
+    BUILD-INSTALLER.bat
+
+Expected installer:
+
+    dist/Matchday-Desktop-Setup-3.1.6.exe

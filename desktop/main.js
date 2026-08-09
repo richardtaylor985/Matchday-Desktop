@@ -9,6 +9,7 @@ const PRODUCT_URL =
 
 const args = process.argv.slice(1).map(v => String(v).toLowerCase());
 const isDev = args.includes("--dev");
+const isUninstallCleanup = args.includes("--uninstall-cleanup");
 let mainWindow = null;
 let armed = false;
 let lastMouse = null;
@@ -47,6 +48,33 @@ function writeUserConfig(value) {
 
 function installedScrPath() {
   return path.join(path.dirname(process.execPath), "Matchday Desktop.scr");
+}
+
+
+async function runUninstallCleanup() {
+  const current = readUserConfig();
+
+  try {
+    if (current.useScreenSaver && current.previousScreenSaver) {
+      await integration.restoreScreenSaver(current.previousScreenSaver);
+    }
+  } catch (error) {
+    console.error("Unable to restore previous screensaver:", error);
+  }
+
+  try {
+    await integration.setStartup(false, process.execPath);
+  } catch (error) {
+    console.error("Unable to remove startup registration:", error);
+  }
+
+  try {
+    if (fs.existsSync(userConfigPath())) {
+      fs.unlinkSync(userConfigPath());
+    }
+  } catch (error) {
+    console.error("Unable to remove Matchday integration config:", error);
+  }
 }
 
 function registerIntegrationIpc() {
@@ -161,8 +189,15 @@ function createWindow({ fullScreen = false, kiosk = false, settings = false } = 
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log("Matchday Desktop mode:", mode);
+
+  if (isUninstallCleanup) {
+    await runUninstallCleanup();
+    app.quit();
+    return;
+  }
+
   registerIntegrationIpc();
 
   if (mode === "screensaver") {

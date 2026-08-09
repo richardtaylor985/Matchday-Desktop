@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.1b5",
-  "channel": "windows-bridge-fix",
+  "version": "3.1c",
+  "channel": "clean-install-preview",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }
