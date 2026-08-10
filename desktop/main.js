@@ -102,7 +102,22 @@ async function runUninstallCleanup() {
 }
 
 function registerIntegrationIpc() {
-  ipcMain.handle("matchday:get-windows-settings", async () => readUserConfig());
+  ipcMain.handle("matchday:get-windows-settings", async () => {
+    const config = readUserConfig();
+
+    try {
+      const screenSaverDiagnostics = await integration.getScreenSaverDiagnostics();
+      return { ...config, screenSaverDiagnostics };
+    } catch (error) {
+      console.warn("Could not read screensaver diagnostics:", error);
+      return {
+        ...config,
+        screenSaverDiagnostics: {
+          error: String(error?.message || error)
+        }
+      };
+    }
+  });
   ipcMain.handle("matchday:get-display-preferences", async () => {
     const config = readUserConfig();
     return {
@@ -159,7 +174,9 @@ function registerIntegrationIpc() {
       }
       const scr = installedScrPath();
       if (!fs.existsSync(scr)) throw new Error(`Screensaver file not found: ${scr}`);
-      await integration.setMatchdayScreenSaver(scr, settings.timeoutSeconds || 600);
+      const verifiedScreenSaver =
+        await integration.setMatchdayScreenSaver(scr, settings.timeoutSeconds || 600);
+      next.screenSaverVerification = verifiedScreenSaver;
     } else if (current.useScreenSaver && current.previousScreenSaver) {
       await integration.restoreScreenSaver(current.previousScreenSaver);
     }

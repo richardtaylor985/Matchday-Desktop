@@ -166,9 +166,23 @@ async function loadWindowsIntegrationSettings() {
       String(state.timeoutSeconds || 600);
 
     if (status) {
-      status.textContent = state.configured
-        ? `Windows integration connected • bridge ${window.matchdayWindows.bridgeVersion || "ready"}`
-        : `Windows integration connected • bridge ${window.matchdayWindows.bridgeVersion || "ready"} • choose your options and save.`;
+      const diag = state.screenSaverDiagnostics || {};
+      const effectiveSeconds =
+        Number(diag.liveTimeout || diag.registryTimeout || state.timeoutSeconds || 0);
+
+      const parts = [
+        `Windows integration connected • bridge ${window.matchdayWindows.bridgeVersion || "ready"}`
+      ];
+
+      if (state.useScreenSaver && effectiveSeconds > 0) {
+        parts.push(`screensaver timeout ${Math.round(effectiveSeconds / 60)} min`);
+      }
+
+      if (diag.policyTimeout || diag.policyActive || diag.policyScr) {
+        parts.push("Windows policy may override screensaver settings");
+      }
+
+      status.textContent = parts.join(" • ");
     }
   } catch (error) {
     if (status) {

@@ -838,3 +838,21 @@ is verified.
 - Adds topology diagnostics for display bounds, work area, resolution, DPI scaling,
   rotation and internal/external display state.
 - Retains per-monitor full-bounds screensaver windows and display-change discovery.
+
+## Stage 3.2i — Release Hardening
+
+The screensaver timeout integration now uses the documented Win32
+SystemParametersInfo screensaver APIs as well as the persistent HKCU registry values.
+
+On save Matchday:
+- writes SCRNSAVE.EXE / ScreenSaveActive / ScreenSaveTimeOut;
+- applies SPI_SETSCREENSAVETIMEOUT to the live Windows session;
+- applies SPI_SETSCREENSAVEACTIVE;
+- reads the timeout back through SPI_GETSCREENSAVETIMEOUT;
+- verifies the registry/live values match the requested timeout;
+- reports policy values that may override user settings.
+
+Settings now reports the effective timeout when reopened.
+
+No new product features are introduced in 3.2i. This stage is the acceptance /
+release-hardening gate before 3.2 RC1.

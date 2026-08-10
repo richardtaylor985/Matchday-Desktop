@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2h2",
-  "channel": "multi-monitor-hardening",
+  "version": "3.2i",
+  "channel": "release-hardening",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }
