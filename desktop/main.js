@@ -22,6 +22,7 @@ const isDev = args.includes("--dev");
 const isUninstallCleanup = args.includes("--uninstall-cleanup");
 const isDynamicWallpaperMode = args.includes("--dynamic-wallpaper");
 let mainWindow = null;
+let screensaverWindows = [];
 let armed = false;
 let lastMouse = null;
 let movement = 0;
@@ -200,15 +201,19 @@ function installDismissal() {
 
   setTimeout(() => { armed = true; }, 1200);
 
-  mainWindow.webContents.on("before-input-event", (event, input) => {
-    if (!armed) return;
-    const type = String(input.type || "").toLowerCase();
+  for (const saverWindow of screensaverWindows) {
+    if (!saverWindow || saverWindow.isDestroyed()) continue;
 
-    if (["keydown", "keyup", "mousedown", "mouseup"].includes(type)) {
-      event.preventDefault();
-      quitSaver();
-    }
-  });
+    saverWindow.webContents.on("before-input-event", (event, input) => {
+      if (!armed) return;
+      const type = String(input.type || "").toLowerCase();
+
+      if (["keydown", "keyup", "mousedown", "mouseup"].includes(type)) {
+        event.preventDefault();
+        quitSaver();
+      }
+    });
+  }
 
   ipcMain.removeAllListeners("screensaver-user-activity");
   ipcMain.on("screensaver-user-activity", (_event, activity) => {
@@ -385,10 +390,32 @@ async function captureAndApplyDynamicWallpaper() {
   if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) return;
 
   const display = screen.getPrimaryDisplay();
-  const width = Math.max(1, display.size.width);
-  const height = Math.max(1, display.size.height);
+  const bounds = display.bounds;
+  const width = Math.max(1, bounds.width);
+  const height = Math.max(1, bounds.height);
 
-  dynamicWallpaperWindow.setSize(width, height, false);
+  // BrowserWindow.setSize can be affected by non-client/work-area behaviour.
+  // The hidden wallpaper renderer must match the complete monitor bounds,
+  // including the area Windows later covers with the taskbar.
+  dynamicWallpaperWindow.setBounds({
+    x: bounds.x,
+    y: bounds.y,
+    width,
+    height
+  }, false);
+
+  const [contentWidth, contentHeight] =
+    dynamicWallpaperWindow.getContentSize();
+
+  console.log("Wallpaper capture geometry:", {
+    displayId: display.id,
+    bounds,
+    displaySize: display.size,
+    workArea: display.workArea,
+    scaleFactor: display.scaleFactor,
+    requested: { width, height },
+    content: { width: contentWidth, height: contentHeight }
+  });
 
   // Wait for either the explicit hosted ready flag or a DOM state that proves
   // the dashboard has rendered successfully. The latter protects wallpaper
@@ -508,12 +535,7 @@ async function captureAndApplyDynamicWallpaper() {
   // Allow the DOM repaint to complete before capture.
   await new Promise(resolve => setTimeout(resolve, 150));
 
-  const image = await dynamicWallpaperWindow.webContents.capturePage({
-    x: 0,
-    y: 0,
-    width,
-    height
-  });
+  const image = await dynamicWallpaperWindow.webContents.capturePage();
 
   const wallpaperDir = path.join(app.getPath("userData"), "wallpaper");
   fs.mkdirSync(wallpaperDir, { recursive: true });
@@ -532,11 +554,14 @@ async function captureAndApplyDynamicWallpaper() {
 
 function createDynamicWallpaperRenderer() {
   const display = screen.getPrimaryDisplay();
+  const bounds = display.bounds;
 
   dynamicWallpaperWindow = new BrowserWindow({
     title: "Matchday Desktop Wallpaper Renderer",
-    width: display.size.width,
-    height: display.size.height,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
     show: false,
     frame: false,
     backgroundColor: "#03070c",
@@ -599,6 +624,65 @@ function hostedUrl({ settings = false, wallpaper = false } = {}) {
     : PRODUCT_URL;
 }
 
+function createScreensaverWindows() {
+  const displays = screen.getAllDisplays();
+
+  console.log(
+    "Screensaver displays:",
+    displays.map(display => ({
+      id: display.id,
+      bounds: display.bounds,
+      size: display.size,
+      scaleFactor: display.scaleFactor
+    }))
+  );
+
+  screensaverWindows = displays.map((display, index) => {
+    const bounds = display.bounds;
+    const saverWindow = new BrowserWindow({
+      title: `Matchday Desktop Screensaver ${index + 1}`,
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      backgroundColor: "#03070c",
+      autoHideMenuBar: true,
+      show: false,
+      frame: false,
+      fullscreenable: true,
+      skipTaskbar: true,
+      alwaysOnTop: true,
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        preload: path.join(__dirname, "preload.js")
+      }
+    });
+
+    saverWindow.loadURL(hostedUrl()).catch(error => {
+      console.error(`Screensaver display ${index + 1} load failed:`, error);
+    });
+
+    saverWindow.once("ready-to-show", () => {
+      // Use exact display bounds rather than workArea so the screensaver covers
+      // the taskbar and every physical edge of the monitor.
+      saverWindow.setBounds(bounds, false);
+      saverWindow.showInactive();
+    });
+
+    saverWindow.on("closed", () => {
+      screensaverWindows = screensaverWindows.filter(w => w !== saverWindow);
+      if (mainWindow === saverWindow) mainWindow = null;
+    });
+
+    return saverWindow;
+  });
+
+  mainWindow = screensaverWindows[0] || null;
+  installDismissal();
+}
+
 function createWindow({ fullScreen = false, kiosk = false, settings = false } = {}) {
   mainWindow = new BrowserWindow({
     title: "Matchday Desktop",
@@ -649,13 +733,26 @@ app.whenReady().then(async () => {
 
   registerIntegrationIpc();
 
+  screen.on("display-added", () => {
+    console.log("Display added; dynamic wallpaper geometry will refresh.");
+    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper().catch(console.error);
+  });
+  screen.on("display-removed", () => {
+    console.log("Display removed; dynamic wallpaper geometry will refresh.");
+    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper().catch(console.error);
+  });
+  screen.on("display-metrics-changed", () => {
+    console.log("Display metrics changed; dynamic wallpaper geometry will refresh.");
+    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper().catch(console.error);
+  });
+
   if (isDynamicWallpaperMode) {
     createDynamicWallpaperRenderer();
     return;
   }
 
   if (mode === "screensaver") {
-    createWindow({ fullScreen: true, kiosk: true });
+    createScreensaverWindows();
   } else if (mode === "config") {
     createWindow({ settings: true });
   } else if (mode === "preview") {

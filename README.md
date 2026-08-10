@@ -812,3 +812,20 @@ transitions and prevents wallpaper capture racing the artwork.
 - The separate SAVE WINDOWS SETTINGS button has been removed.
 - The normal SAVE button now applies display preferences and Windows integration in one operation.
 - If Windows integration saving fails, Settings remains open and shows the error.
+
+## Stage 3.2h1 — Multi-Monitor Baseline
+
+- Screensaver now creates one borderless Matchday window for every connected display.
+- Each screensaver window uses the display's full bounds, not the taskbar work area.
+- Keyboard/mouse dismissal is wired across all screensaver windows.
+- Dynamic Wallpaper capture now uses the complete primary-display bounds and captures
+  the full renderer viewport, removing the explicit crop rectangle that could clip the
+  bottom edge.
+- Display geometry and DPI are logged for diagnosis.
+- Display add/remove/metrics events trigger wallpaper geometry refresh.
+
+3.2h1 intentionally establishes the equal-resolution multi-monitor baseline first.
+The existing Windows wallpaper setter continues to apply the generated 16:9 Matchday
+image using Windows' wallpaper behaviour. Per-monitor independent generation for
+mixed resolutions/orientations is reserved for the next h-stage after this baseline
+is verified.
