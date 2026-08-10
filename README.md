@@ -856,3 +856,10 @@ Settings now reports the effective timeout when reopened.
 
 No new product features are introduced in 3.2i. This stage is the acceptance /
 release-hardening gate before 3.2 RC1.
+
+## Stage 3.2i1 — Screensaver Timeout Win32 Signature Fix
+
+Fixes the 3.2i save error caused by using an IntPtr P/Invoke signature for
+SPI_GETSCREENSAVETIMEOUT. SET operations still use IntPtr; GET timeout now uses a
+separate `out uint` signature, which PowerShell can correctly supply via [ref].
+Both save-time verification and Settings diagnostics use the corrected GET signature.

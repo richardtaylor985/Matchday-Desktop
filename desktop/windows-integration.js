@@ -45,11 +45,19 @@ using System;
 using System.Runtime.InteropServices;
 
 public static class MatchdayScreenSaverSettings {
-    [DllImport("user32.dll", SetLastError=true)]
-    public static extern bool SystemParametersInfo(
+    [DllImport("user32.dll", EntryPoint="SystemParametersInfo", SetLastError=true)]
+    public static extern bool SystemParametersInfoSet(
         uint uiAction,
         uint uiParam,
         IntPtr pvParam,
+        uint fWinIni
+    );
+
+    [DllImport("user32.dll", EntryPoint="SystemParametersInfo", SetLastError=true)]
+    public static extern bool SystemParametersInfoGetUInt(
+        uint uiAction,
+        uint uiParam,
+        out uint pvParam,
         uint fWinIni
     );
 
@@ -65,7 +73,7 @@ public static class MatchdayScreenSaverSettings {
       [MatchdayScreenSaverSettings]::SPIF_UPDATEINIFILE -bor
       [MatchdayScreenSaverSettings]::SPIF_SENDCHANGE
 
-    $timeoutApplied = [MatchdayScreenSaverSettings]::SystemParametersInfo(
+    $timeoutApplied = [MatchdayScreenSaverSettings]::SystemParametersInfoSet(
       [MatchdayScreenSaverSettings]::SPI_SETSCREENSAVETIMEOUT,
       ${timeout},
       [IntPtr]::Zero,
@@ -77,7 +85,7 @@ public static class MatchdayScreenSaverSettings {
       throw "SPI_SETSCREENSAVETIMEOUT failed with Win32 error $err"
     }
 
-    $activeApplied = [MatchdayScreenSaverSettings]::SystemParametersInfo(
+    $activeApplied = [MatchdayScreenSaverSettings]::SystemParametersInfoSet(
       [MatchdayScreenSaverSettings]::SPI_SETSCREENSAVEACTIVE,
       1,
       [IntPtr]::Zero,
@@ -90,8 +98,8 @@ public static class MatchdayScreenSaverSettings {
     }
 
     # Verify both the live system timeout and persistent registry values.
-    $liveTimeout = 0
-    $liveOk = [MatchdayScreenSaverSettings]::SystemParametersInfo(
+    [uint32]$liveTimeout = 0
+    $liveOk = [MatchdayScreenSaverSettings]::SystemParametersInfoGetUInt(
       [MatchdayScreenSaverSettings]::SPI_GETSCREENSAVETIMEOUT,
       0,
       [ref]$liveTimeout,
@@ -144,11 +152,11 @@ using System;
 using System.Runtime.InteropServices;
 
 public static class MatchdayScreenSaverRead {
-    [DllImport("user32.dll", SetLastError=true)]
-    public static extern bool SystemParametersInfo(
+    [DllImport("user32.dll", EntryPoint="SystemParametersInfo", SetLastError=true)]
+    public static extern bool SystemParametersInfoGetUInt(
         uint uiAction,
         uint uiParam,
-        IntPtr pvParam,
+        out uint pvParam,
         uint fWinIni
     );
 
@@ -156,8 +164,8 @@ public static class MatchdayScreenSaverRead {
 }
 "@
 
-    $liveTimeout=0
-    $liveOk=[MatchdayScreenSaverRead]::SystemParametersInfo(
+    [uint32]$liveTimeout=0
+    $liveOk=[MatchdayScreenSaverRead]::SystemParametersInfoGetUInt(
       [MatchdayScreenSaverRead]::SPI_GETSCREENSAVETIMEOUT,
       0,
       [ref]$liveTimeout,

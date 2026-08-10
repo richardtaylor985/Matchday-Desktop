@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2i",
-  "channel": "release-hardening",
+  "version": "3.2i1",
+  "channel": "screensaver-timeout-signature-fix",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }
