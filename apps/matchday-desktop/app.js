@@ -690,7 +690,25 @@ async function initialiseSelectedClub() {
   await loadLiveData();
 }
 
+async function applyNativeDisplayPreferences() {
+  try {
+    if (!window.matchdayWindows?.getDisplayPreferences) return;
+    const preferences = await window.matchdayWindows.getDisplayPreferences();
+    if (!preferences) return;
+
+    const current = loadUserSettings();
+    saveUserSettings({
+      ...current,
+      clockFormat: preferences.clockFormat === "12" ? "12" : "24",
+      showSeconds: Boolean(preferences.showSeconds)
+    });
+  } catch (error) {
+    console.warn("Could not load native display preferences:", error);
+  }
+}
+
 async function bootMatchdayDesktop() {
+  await applyNativeDisplayPreferences();
   window.__MATCHDAY_READY__ = false;
   initialiseDisplayMode();
   loadProductMetadata();

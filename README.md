@@ -829,3 +829,12 @@ The existing Windows wallpaper setter continues to apply the generated 16:9 Matc
 image using Windows' wallpaper behaviour. Per-monitor independent generation for
 mixed resolutions/orientations is reserved for the next h-stage after this baseline
 is verified.
+
+## Stage 3.2h2 — Multi-Monitor Hardening + Screensaver Seconds
+
+- Fixes Show seconds on screensaver by persisting clockFormat/showSeconds in
+  Electron native configuration during the unified Settings SAVE.
+- Every screensaver renderer reads those native preferences before dashboard boot.
+- Adds topology diagnostics for display bounds, work area, resolution, DPI scaling,
+  rotation and internal/external display state.
+- Retains per-monitor full-bounds screensaver windows and display-change discovery.

@@ -103,6 +103,14 @@ async function runUninstallCleanup() {
 
 function registerIntegrationIpc() {
   ipcMain.handle("matchday:get-windows-settings", async () => readUserConfig());
+  ipcMain.handle("matchday:get-display-preferences", async () => {
+    const config = readUserConfig();
+    return {
+      clockFormat: String(config.clockFormat || "24"),
+      showSeconds: Boolean(config.showSeconds)
+    };
+  });
+
 
   ipcMain.handle("matchday:set-selected-club", async (event, club) => {
     const normalized = String(club || "").trim().toLowerCase();
@@ -141,7 +149,9 @@ function registerIntegrationIpc() {
 
   ipcMain.handle("matchday:save-windows-settings", async (_event, settings) => {
     const current = readUserConfig();
-    const next = { ...current, ...settings, configured: true };
+    const next = {
+      clockFormat: String(settings.clockFormat || current.clockFormat || "24"),
+      showSeconds: typeof settings.showSeconds === "boolean" ? settings.showSeconds : Boolean(current.showSeconds), ...current, ...settings, configured: true };
 
     if (settings.useScreenSaver) {
       if (!current.previousScreenSaver) {
@@ -624,8 +634,23 @@ function hostedUrl({ settings = false, wallpaper = false } = {}) {
     : PRODUCT_URL;
 }
 
+function logDisplayTopology() {
+  const topology = screen.getAllDisplays().map(display => ({
+    id: display.id,
+    bounds: display.bounds,
+    workArea: display.workArea,
+    size: display.size,
+    scaleFactor: display.scaleFactor,
+    rotation: display.rotation,
+    internal: Boolean(display.internal)
+  }));
+  console.log("Matchday display topology:", topology);
+  return topology;
+}
+
 function createScreensaverWindows() {
   const displays = screen.getAllDisplays();
+  logDisplayTopology();
 
   console.log(
     "Screensaver displays:",

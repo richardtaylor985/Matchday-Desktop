@@ -72,7 +72,9 @@ async function applySettings() {
         startWithWindows:
           document.getElementById("startMatchdayWindows").checked,
         timeoutSeconds:
-          Number(document.getElementById("matchdayScreenSaverTimeout").value)
+          Number(document.getElementById("matchdayScreenSaverTimeout").value),
+        clockFormat: settings.clockFormat,
+        showSeconds: settings.showSeconds
       });
     }
 

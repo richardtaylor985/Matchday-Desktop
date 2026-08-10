@@ -1,9 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("matchdayWindows", {
-  bridgeVersion: "3.2h1",
+  bridgeVersion: "3.2h2",
   getSettings: () =>
     ipcRenderer.invoke("matchday:get-windows-settings"),
+  getDisplayPreferences: () =>
+    ipcRenderer.invoke("matchday:get-display-preferences"),
   saveSettings: settings =>
     ipcRenderer.invoke("matchday:save-windows-settings", settings),
   setSelectedClub: club =>
