@@ -923,3 +923,17 @@ body.dynamic-wallpaper-mode .countdown-row {
 body.dynamic-wallpaper-mode .countdown-row > div:last-child {
   display: none;
 }
+
+.settings-inline-value {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.settings-inline-value strong {
+  font-weight: 600;
+}
+.settings-status-row small {
+  text-align: right;
+  max-width: 62%;
+}

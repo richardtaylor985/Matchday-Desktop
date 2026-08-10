@@ -18,6 +18,20 @@ function saveUserSettings(settings) {
   localStorage.setItem(MATCHDAY_SETTINGS_KEY, JSON.stringify(settings));
 }
 
+
+function updateSettingsClubLabel() {
+  const label = document.getElementById("settingsClubName");
+  if (!label) return;
+
+  const slug = String(window.MATCHDAY_CONFIG?.club || "");
+  const names = {
+    "coventry-city": "Coventry City",
+    "arsenal": "Arsenal"
+  };
+
+  label.textContent = names[slug] || slug || "Not selected";
+}
+
 function openSettings() {
   const panel = document.getElementById("settingsPanel");
   if (!panel) return;
@@ -25,6 +39,7 @@ function openSettings() {
   const settings = loadUserSettings();
   document.getElementById("settingClockFormat").value = settings.clockFormat;
   document.getElementById("settingShowSeconds").checked = settings.showSeconds;
+  updateSettingsClubLabel();
   panel.hidden = false;
   loadWindowsIntegrationSettings();
 }
@@ -34,15 +49,49 @@ function closeSettings() {
   if (panel) panel.hidden = true;
 }
 
-function applySettings() {
+async function applySettings() {
+  const saveButton = document.getElementById("settingsSaveButton");
+  const status = document.getElementById("windowsIntegrationStatus");
   const settings = {
     clockFormat: document.getElementById("settingClockFormat").value,
     showSeconds: document.getElementById("settingShowSeconds").checked
   };
 
-  saveUserSettings(settings);
-  updateClock();
-  closeSettings();
+  if (saveButton) saveButton.disabled = true;
+  if (status && window.matchdayWindows) status.textContent = "Saving…";
+
+  try {
+    // Save Windows integration first. If native configuration fails, keep the
+    // Settings panel open so the user can see the error and retry.
+    if (window.matchdayWindows) {
+      await window.matchdayWindows.saveSettings({
+        useScreenSaver:
+          document.getElementById("useMatchdayScreensaver").checked,
+        useLiveDesktop:
+          document.getElementById("useMatchdayLiveDesktop").checked,
+        startWithWindows:
+          document.getElementById("startMatchdayWindows").checked,
+        timeoutSeconds:
+          Number(document.getElementById("matchdayScreenSaverTimeout").value)
+      });
+    }
+
+    saveUserSettings(settings);
+    updateClock();
+
+    if (status && window.matchdayWindows) {
+      status.textContent = "Settings saved.";
+    }
+
+    closeSettings();
+  } catch (error) {
+    if (status) {
+      status.textContent =
+        `Could not save settings: ${error.message || error}`;
+    }
+  } finally {
+    if (saveButton) saveButton.disabled = false;
+  }
 }
 
 async function loadProductMetadata() {
@@ -91,7 +140,6 @@ async function loadWindowsIntegrationSettings() {
     document.getElementById("useMatchdayScreensaver").disabled = true;
     document.getElementById("startMatchdayWindows").disabled = true;
     document.getElementById("matchdayScreenSaverTimeout").disabled = true;
-    document.getElementById("saveWindowsIntegration").disabled = true;
 
     if (status) {
       status.textContent =
@@ -128,54 +176,3 @@ async function loadWindowsIntegrationSettings() {
   }
 }
 
-async function saveWindowsIntegrationSettings() {
-  const status = document.getElementById("windowsIntegrationStatus");
-
-  if (!window.matchdayWindows) {
-    if (status) status.textContent = "Windows integration is available in the installed app.";
-    return;
-  }
-
-  if (status) status.textContent = "Saving…";
-
-  try {
-    const saved = await window.matchdayWindows.saveSettings({
-      useScreenSaver:
-        document.getElementById("useMatchdayScreensaver").checked,
-      useLiveDesktop:
-        document.getElementById("useMatchdayLiveDesktop").checked,
-      startWithWindows:
-        document.getElementById("startMatchdayWindows").checked,
-      timeoutSeconds:
-        Number(document.getElementById("matchdayScreenSaverTimeout").value)
-    });
-
-    if (status) {
-      const messages = [];
-
-      if (saved.useScreenSaver) {
-        messages.push("screensaver enabled");
-      }
-
-      if (saved.useLiveDesktop) {
-        messages.push("dynamic wallpaper enabled");
-      }
-
-      status.textContent = messages.length
-        ? `Saved • ${messages.join(" • ")}.`
-        : "Windows settings saved.";
-    }
-  } catch (error) {
-    if (status) {
-      status.textContent =
-        `Could not save Windows settings: ${error.message || error}`;
-    }
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const button = document.getElementById("saveWindowsIntegration");
-  if (button) {
-    button.addEventListener("click", saveWindowsIntegrationSettings);
-  }
-});

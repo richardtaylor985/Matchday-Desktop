@@ -44,14 +44,25 @@ function storeClubSlug(slug) {
   }
 }
 
-function clearClubSelection() {
+async function clearClubSelection() {
+  // "Change Club" is a Settings sub-flow. Keep the current selection intact
+  // until the user chooses a replacement, then return them to Settings.
   try {
-    localStorage.removeItem(MATCHDAY_SELECTED_CLUB_KEY);
+    sessionStorage.setItem("matchday:return-to-settings", "1");
   } catch {
-    // Ignore storage errors.
+    // Session storage failure should not block club selection.
   }
 
-  window.location.href = window.location.pathname;
+  const panel = document.getElementById("settingsPanel");
+  if (panel) panel.hidden = true;
+
+  try {
+    const clubs = await fetchSupportedClubs();
+    renderClubSelector(clubs);
+  } catch (error) {
+    console.error("Unable to open club selector:", error);
+    if (panel) panel.hidden = false;
+  }
 }
 
 async function selectClub(club) {
@@ -113,6 +124,19 @@ function renderClubSelector(clubs) {
       try {
         await selectClub(club);
         await initialiseSelectedClub();
+
+        let returnToSettings = false;
+        try {
+          returnToSettings =
+            sessionStorage.getItem("matchday:return-to-settings") === "1";
+          sessionStorage.removeItem("matchday:return-to-settings");
+        } catch {
+          // Ignore session storage errors.
+        }
+
+        if (returnToSettings && typeof openSettings === "function") {
+          openSettings();
+        }
       } finally {
         button.disabled = false;
       }

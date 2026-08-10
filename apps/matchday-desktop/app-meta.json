@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2g4",
-  "channel": "wallpaper-club-switch-reliability",
+  "version": "3.2g5",
+  "channel": "settings-ux-consolidation",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }

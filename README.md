@@ -804,3 +804,11 @@ if it cannot capture.
 Before the hosted app sets its ready flag, Matchday also waits for image decoding,
 document fonts and the CSS hero background image. This reduces slow Coventry hero
 transitions and prevents wallpaper capture racing the artwork.
+
+## Stage 3.2g5 — Settings UX Consolidation
+
+- Change Club is now a Settings sub-flow: choosing a club returns directly to Settings.
+- Settings displays the currently selected club beside Change Club.
+- The separate SAVE WINDOWS SETTINGS button has been removed.
+- The normal SAVE button now applies display preferences and Windows integration in one operation.
+- If Windows integration saving fails, Settings remains open and shows the error.
