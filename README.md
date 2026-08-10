@@ -863,3 +863,12 @@ Fixes the 3.2i save error caused by using an IntPtr P/Invoke signature for
 SPI_GETSCREENSAVETIMEOUT. SET operations still use IntPtr; GET timeout now uses a
 separate `out uint` signature, which PowerShell can correctly supply via [ref].
 Both save-time verification and Settings diagnostics use the corrected GET signature.
+
+## Matchday Desktop 3.2 RC1
+
+Stage 3.2i1 has passed the developer acceptance checks and is promoted to Release
+Candidate 1. RC1 is feature frozen.
+
+Use CHECK-RC1.bat before building the installer. External testing instructions are
+in docs/3.2-RC1-EXTERNAL-TEST.md. Only blocker/major defects should change RC1
+before the 3.2 final release.
