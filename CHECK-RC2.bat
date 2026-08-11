@@ -1,9 +1,9 @@
 @echo off
 setlocal
-title Matchday Desktop 3.2 RC1 - Smoke Check
+title Matchday Desktop 3.2 RC2 - Smoke Check
 cd /d "%~dp0"
 
-echo Matchday Desktop 3.2 RC1 Smoke Check
+echo Matchday Desktop 3.2 RC2 Smoke Check
 echo =====================================
 echo.
 set FAIL=0
@@ -28,7 +28,7 @@ for %%F in (
   )
 )
 
-findstr /C:"3.2.0-rc.1" "package.json" >nul 2>&1
+findstr /C:"3.2.0-rc.2" "package.json" >nul 2>&1
 if errorlevel 1 (
   echo [FAIL] RC package version
   set FAIL=1
@@ -54,9 +54,9 @@ if errorlevel 1 (
 
 echo.
 if "%FAIL%"=="0" (
-  echo MATCHDAY DESKTOP 3.2 RC1 SMOKE CHECK PASSED
+  echo MATCHDAY DESKTOP 3.2 RC2 SMOKE CHECK PASSED
 ) else (
-  echo MATCHDAY DESKTOP 3.2 RC1 SMOKE CHECK FAILED
+  echo MATCHDAY DESKTOP 3.2 RC2 SMOKE CHECK FAILED
 )
 echo.
 pause

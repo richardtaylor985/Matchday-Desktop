@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, shell, dialog, ipcMain, screen } = require("electron");
+const { app, BrowserWindow, globalShortcut, shell, dialog, ipcMain, screen, powerMonitor } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { execFile } = require("child_process");
@@ -21,6 +21,12 @@ const args = process.argv.slice(1).map(v => String(v).toLowerCase());
 const isDev = args.includes("--dev");
 const isUninstallCleanup = args.includes("--uninstall-cleanup");
 const isDynamicWallpaperMode = args.includes("--dynamic-wallpaper");
+const ownsWallpaperInstanceLock =
+  !isDynamicWallpaperMode || app.requestSingleInstanceLock({ role: "dynamic-wallpaper" });
+if (isDynamicWallpaperMode && !ownsWallpaperInstanceLock) {
+  console.log("Duplicate Dynamic Wallpaper renderer blocked.");
+  app.quit();
+}
 let mainWindow = null;
 let screensaverWindows = [];
 let armed = false;
@@ -136,10 +142,20 @@ function registerIntegrationIpc() {
 
     const current = readUserConfig();
 
-    // A hosted renderer always persists its resolved club back to the native
-    // shell. If it is already the native selected club, do nothing. This is
-    // particularly important for the hidden wallpaper renderer: reloading it
-    // here would create an endless load -> persist -> reload loop.
+    // Wallpaper is a consumer of native configuration. A stale page surviving
+    // sleep/resume must never write its old club back over the user's choice.
+    if (
+      dynamicWallpaperWindow &&
+      !dynamicWallpaperWindow.isDestroyed() &&
+      event.sender.id === dynamicWallpaperWindow.webContents.id
+    ) {
+      if (current.selectedClub !== normalized) {
+        console.warn(`Ignored stale wallpaper club "${normalized}"; native club is "${current.selectedClub}".`);
+      }
+      dynamicWallpaperClub = current.selectedClub || dynamicWallpaperClub;
+      return current;
+    }
+
     if (current.selectedClub === normalized) {
       return current;
     }
@@ -155,6 +171,7 @@ function registerIntegrationIpc() {
       !dynamicWallpaperWindow.isDestroyed() &&
       event.sender.id !== dynamicWallpaperWindow.webContents.id
     ) {
+      dynamicWallpaperClub = normalized;
       await dynamicWallpaperWindow.loadURL(hostedUrl({ wallpaper: true }));
     }
 
@@ -273,6 +290,8 @@ function installDismissal() {
 let dynamicWallpaperWindow = null;
 let dynamicWallpaperTimer = null;
 let previousWallpaperPath = null;
+let dynamicWallpaperClub = null;
+let wallpaperRefreshInProgress = false;
 
 function powershellFile(scriptPath, args = []) {
   return new Promise((resolve, reject) => {
@@ -413,9 +432,27 @@ function stopExternalWallpaperRenderer(pid) {
   }
 }
 
+async function synchronizeDynamicWallpaperClub({ force = false } = {}) {
+  if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) return false;
+  const selectedClub = String(readUserConfig().selectedClub || "").trim().toLowerCase();
+  if (!selectedClub) return false;
+  if (!force && dynamicWallpaperClub === selectedClub) return false;
+
+  dynamicWallpaperClub = selectedClub;
+  console.log(`Synchronizing Dynamic Wallpaper club: ${selectedClub}`);
+  await dynamicWallpaperWindow.loadURL(hostedUrl({ wallpaper: true }));
+  return true;
+}
+
 async function captureAndApplyDynamicWallpaper() {
   if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) return;
+  if (wallpaperRefreshInProgress) {
+    console.log("Dynamic wallpaper refresh skipped; refresh already in progress.");
+    return;
+  }
+  wallpaperRefreshInProgress = true;
 
+  try {
   const display = screen.getPrimaryDisplay();
   const bounds = display.bounds;
   const width = Math.max(1, bounds.width);
@@ -577,9 +614,15 @@ async function captureAndApplyDynamicWallpaper() {
 
   console.log("Dynamic wallpaper refreshed:", outputPath);
   if (result) console.log("Wallpaper setter:", result);
+  } finally {
+    wallpaperRefreshInProgress = false;
+  }
 }
 
 function createDynamicWallpaperRenderer() {
+  dynamicWallpaperClub =
+    String(readUserConfig().selectedClub || "").trim().toLowerCase() || null;
+
   const display = screen.getPrimaryDisplay();
   const bounds = display.bounds;
 
@@ -774,6 +817,35 @@ app.whenReady().then(async () => {
   }
 
   registerIntegrationIpc();
+
+  app.on("second-instance", async () => {
+    if (!isDynamicWallpaperMode) return;
+    console.log("Duplicate wallpaper launch redirected to current owner.");
+    try {
+      await synchronizeDynamicWallpaperClub({ force: true });
+      await captureAndApplyDynamicWallpaper();
+      await scheduleNextDynamicWallpaperRefresh();
+    } catch (error) {
+      console.error("Duplicate-instance wallpaper synchronization failed:", error?.stack || error);
+    }
+  });
+
+  powerMonitor.on("resume", async () => {
+    if (!isDynamicWallpaperMode) return;
+    console.log("Windows resumed; synchronizing wallpaper from native configuration.");
+    try {
+      if (dynamicWallpaperTimer) {
+        clearTimeout(dynamicWallpaperTimer);
+        dynamicWallpaperTimer = null;
+      }
+      await synchronizeDynamicWallpaperClub({ force: true });
+      await captureAndApplyDynamicWallpaper();
+      await scheduleNextDynamicWallpaperRefresh();
+    } catch (error) {
+      console.error("Resume wallpaper synchronization failed:", error?.stack || error);
+    }
+  });
+
 
   screen.on("display-added", () => {
     console.log("Display added; dynamic wallpaper geometry will refresh.");

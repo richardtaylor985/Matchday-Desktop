@@ -872,3 +872,6 @@ Candidate 1. RC1 is feature frozen.
 Use CHECK-RC1.bat before building the installer. External testing instructions are
 in docs/3.2-RC1-EXTERNAL-TEST.md. Only blocker/major defects should change RC1
 before the 3.2 final release.
+
+## 3.2 RC2
+Fixes hibernate/resume wallpaper renderer races with single-instance ownership and native-club resynchronization.
