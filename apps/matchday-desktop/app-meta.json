@@ -1,7 +1,7 @@
 {
   "name": "Matchday Desktop",
-  "version": "3.2 RC2a",
-  "channel": "diagnostic",
+  "version": "3.2 RC3",
+  "channel": "release-candidate",
   "apiContract": "dashboard-v1",
   "clubsContract": "clubs-v1"
 }

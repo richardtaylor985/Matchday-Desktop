@@ -875,3 +875,10 @@ before the 3.2 final release.
 
 ## 3.2 RC2
 Fixes hibernate/resume wallpaper renderer races with single-instance ownership and native-club resynchronization.
+
+## Matchday Desktop 3.2 RC3
+
+RC3 introduces authoritative Dynamic Wallpaper ownership using a PID + random token.
+Stale wallpaper workers terminate themselves before any capture or future scheduling.
+The native selected club is also checked against the hidden renderer before every
+wallpaper write. Structured diagnostics and five-minute memory samples remain enabled.

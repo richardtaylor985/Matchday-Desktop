@@ -1,6 +1,7 @@
 const { app, BrowserWindow, globalShortcut, shell, dialog, ipcMain, screen, powerMonitor } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const { execFile } = require("child_process");
 const integration = require("./windows-integration");
 
@@ -242,12 +243,24 @@ function registerIntegrationIpc() {
         next.previousWallpaper = await getCurrentWallpaperState();
       }
 
-      if (current.wallpaperPid && Number(current.wallpaperPid) !== process.pid) {
-        stopExternalWallpaperRenderer(current.wallpaperPid);
+      const previousOwner = current.wallpaperOwner;
+      const previousPid =
+        previousOwner?.pid || current.wallpaperPid || null;
+
+      // Invalidate any previous ownership record first. A stale process that
+      // wakes later will fail its next ownership check and terminate itself.
+      next.wallpaperOwner = null;
+      next.wallpaperPid = null;
+      writeUserConfig({ ...current, wallpaperOwner: null, wallpaperPid: null });
+
+      if (previousPid && Number(previousPid) !== process.pid) {
+        stopExternalWallpaperRenderer(previousPid);
       }
 
       if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) {
         createDynamicWallpaperRenderer();
+        next.wallpaperOwner = currentWallpaperOwnership();
+        next.wallpaperPid = process.pid;
       }
     } else if (current.useLiveDesktop) {
       if (current.wallpaperPid && Number(current.wallpaperPid) !== process.pid) {
@@ -331,6 +344,8 @@ let dynamicWallpaperTimer = null;
 let previousWallpaperPath = null;
 let dynamicWallpaperClub = null;
 let wallpaperRefreshInProgress = false;
+let wallpaperOwnerToken = null;
+let wallpaperMemoryTimer = null;
 
 function powershellFile(scriptPath, args = []) {
   return new Promise((resolve, reject) => {
@@ -359,6 +374,107 @@ function powershellFile(scriptPath, args = []) {
 const WALLPAPER_REFRESH_NORMAL_MS = 60 * 1000;
 const WALLPAPER_REFRESH_MATCHDAY_MS = 30 * 1000;
 const WALLPAPER_REFRESH_LIVE_MS = 15 * 1000;
+
+
+function createWallpaperOwnerToken() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function claimWallpaperOwnership() {
+  const token = createWallpaperOwnerToken();
+  wallpaperOwnerToken = token;
+
+  const current = readUserConfig();
+  const next = {
+    ...current,
+    wallpaperOwner: {
+      pid: process.pid,
+      token,
+      startedAt: new Date().toISOString(),
+      execPath: process.execPath
+    },
+    wallpaperPid: process.pid
+  };
+
+  writeUserConfig(next);
+
+  wallpaperDiagnostic("ownership-claimed", {
+    ownerPid: process.pid,
+    ownerToken: token
+  });
+
+  return next.wallpaperOwner;
+}
+
+function currentWallpaperOwnership() {
+  return readUserConfig().wallpaperOwner || null;
+}
+
+function stillOwnsWallpaper() {
+  const owner = currentWallpaperOwnership();
+
+  return Boolean(
+    owner &&
+    Number(owner.pid) === process.pid &&
+    String(owner.token || "") === String(wallpaperOwnerToken || "")
+  );
+}
+
+function relinquishWallpaperOwnership() {
+  const current = readUserConfig();
+  const owner = current.wallpaperOwner;
+
+  if (
+    owner &&
+    Number(owner.pid) === process.pid &&
+    String(owner.token || "") === String(wallpaperOwnerToken || "")
+  ) {
+    const next = {
+      ...current,
+      wallpaperOwner: null,
+      wallpaperPid: null
+    };
+
+    writeUserConfig(next);
+
+    wallpaperDiagnostic("ownership-relinquished", {
+      ownerPid: process.pid,
+      ownerToken: wallpaperOwnerToken
+    });
+  }
+
+  wallpaperOwnerToken = null;
+}
+
+function stopStaleWallpaperWorker(reason = "ownership-lost") {
+  wallpaperDiagnostic("stale-worker-exit", {
+    reason,
+    currentOwner: currentWallpaperOwnership()
+  });
+
+  if (dynamicWallpaperTimer) {
+    clearTimeout(dynamicWallpaperTimer);
+    dynamicWallpaperTimer = null;
+  }
+
+  if (wallpaperMemoryTimer) {
+    clearInterval(wallpaperMemoryTimer);
+    wallpaperMemoryTimer = null;
+  }
+
+  setTimeout(() => app.quit(), 50);
+}
+
+function logWallpaperMemoryUsage() {
+  const usage = process.memoryUsage();
+
+  wallpaperDiagnostic("memory-sample", {
+    rssMB: Math.round(usage.rss / 1024 / 1024),
+    heapUsedMB: Math.round(usage.heapUsed / 1024 / 1024),
+    heapTotalMB: Math.round(usage.heapTotal / 1024 / 1024),
+    externalMB: Math.round(usage.external / 1024 / 1024)
+  });
+}
 
 function updateIntegrationConfig(patch) {
   const current = readUserConfig();
@@ -421,6 +537,11 @@ async function determineWallpaperRefreshMs() {
 }
 
 async function scheduleNextDynamicWallpaperRefresh() {
+  if (!stillOwnsWallpaper()) {
+    stopStaleWallpaperWorker("schedule-blocked");
+    return;
+  }
+
   if (dynamicWallpaperTimer) {
     clearTimeout(dynamicWallpaperTimer);
     dynamicWallpaperTimer = null;
@@ -455,10 +576,12 @@ function stopDynamicWallpaperRenderer() {
 
   dynamicWallpaperWindow = null;
 
-  const state = readUserConfig();
-  if (state.wallpaperPid === process.pid) {
-    updateIntegrationConfig({ wallpaperPid: null });
+  if (wallpaperMemoryTimer) {
+    clearInterval(wallpaperMemoryTimer);
+    wallpaperMemoryTimer = null;
   }
+
+  relinquishWallpaperOwnership();
 }
 
 function stopExternalWallpaperRenderer(pid) {
@@ -484,14 +607,78 @@ async function synchronizeDynamicWallpaperClub({ force = false } = {}) {
   return true;
 }
 
+
+async function ensureWallpaperRendererMatchesNativeClub() {
+  if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) {
+    return false;
+  }
+
+  const nativeClub =
+    String(readUserConfig().selectedClub || "").trim().toLowerCase();
+
+  if (!nativeClub) return false;
+
+  let rendererClub = null;
+
+  try {
+    rendererClub = await dynamicWallpaperWindow.webContents.executeJavaScript(`
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        return String(params.get("club") || window.MATCHDAY_CONFIG?.club || "")
+          .trim()
+          .toLowerCase();
+      })()
+    `);
+  } catch (error) {
+    wallpaperDiagnostic("renderer-club-read-failed", {
+      error: String(error?.message || error)
+    });
+  }
+
+  rendererClub = String(rendererClub || dynamicWallpaperClub || "")
+    .trim()
+    .toLowerCase();
+
+  if (rendererClub === nativeClub) {
+    dynamicWallpaperClub = nativeClub;
+    return true;
+  }
+
+  wallpaperDiagnostic("renderer-club-mismatch", {
+    nativeClub,
+    rendererClub
+  });
+
+  await synchronizeDynamicWallpaperClub({ force: true });
+
+  // did-finish-load will drive the next safe capture.
+  return false;
+}
+
 async function captureAndApplyDynamicWallpaper(trigger = "unspecified") {
   if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) return;
+
+  if (!stillOwnsWallpaper()) {
+    stopStaleWallpaperWorker(`capture-blocked:${trigger}`);
+    return;
+  }
+
+  const rendererMatches = await ensureWallpaperRendererMatchesNativeClub();
+  if (!rendererMatches) {
+    wallpaperDiagnostic("capture-deferred-club-mismatch", { trigger });
+    return;
+  }
+
   if (wallpaperRefreshInProgress) {
     console.log("Dynamic wallpaper refresh skipped; refresh already in progress.");
     return;
   }
+
   wallpaperRefreshInProgress = true;
-  wallpaperDiagnostic("capture-start", { trigger });
+  wallpaperDiagnostic("capture-start", {
+    trigger,
+    ownership: currentWallpaperOwnership()
+  });
 
   try {
   const display = screen.getPrimaryDisplay();
@@ -665,8 +852,15 @@ async function captureAndApplyDynamicWallpaper(trigger = "unspecified") {
 }
 
 function createDynamicWallpaperRenderer() {
+  claimWallpaperOwnership();
+
   dynamicWallpaperClub =
     String(readUserConfig().selectedClub || "").trim().toLowerCase() || null;
+
+  if (!wallpaperMemoryTimer) {
+    logWallpaperMemoryUsage();
+    wallpaperMemoryTimer = setInterval(logWallpaperMemoryUsage, 5 * 60 * 1000);
+  }
 
   const display = screen.getPrimaryDisplay();
   const bounds = display.bounds;
@@ -715,10 +909,12 @@ function createDynamicWallpaperRenderer() {
 
     dynamicWallpaperWindow = null;
 
-    const state = readUserConfig();
-    if (state.wallpaperPid === process.pid) {
-      updateIntegrationConfig({ wallpaperPid: null });
+    if (wallpaperMemoryTimer) {
+      clearInterval(wallpaperMemoryTimer);
+      wallpaperMemoryTimer = null;
     }
+
+    relinquishWallpaperOwnership();
   });
 }
 
@@ -858,7 +1054,8 @@ app.whenReady().then(async () => {
     wallpaperDiagnostic("process-ready", {
       ownsWallpaperInstanceLock,
       mode,
-      packaged: app.isPackaged
+      packaged: app.isPackaged,
+      ownership: currentWallpaperOwnership()
     });
   }
 
@@ -885,13 +1082,24 @@ app.whenReady().then(async () => {
 
   powerMonitor.on("resume", async () => {
     if (!isDynamicWallpaperMode) return;
-    wallpaperDiagnostic("windows-resume-detected");
+
+    wallpaperDiagnostic("windows-resume-detected", {
+      ownership: currentWallpaperOwnership()
+    });
+
+    if (!stillOwnsWallpaper()) {
+      stopStaleWallpaperWorker("resume-owner-mismatch");
+      return;
+    }
+
     console.log("Windows resumed; synchronizing wallpaper from native configuration.");
+
     try {
       if (dynamicWallpaperTimer) {
         clearTimeout(dynamicWallpaperTimer);
         dynamicWallpaperTimer = null;
       }
+
       await synchronizeDynamicWallpaperClub({ force: true });
       await captureAndApplyDynamicWallpaper("windows-resume");
       await scheduleNextDynamicWallpaperRefresh();
@@ -946,6 +1154,14 @@ app.whenReady().then(async () => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   ipcMain.removeAllListeners("screensaver-user-activity");
+
+  if (isDynamicWallpaperMode) {
+    if (wallpaperMemoryTimer) {
+      clearInterval(wallpaperMemoryTimer);
+      wallpaperMemoryTimer = null;
+    }
+    relinquishWallpaperOwnership();
+  }
 });
 
 app.on("window-all-closed", () => {
