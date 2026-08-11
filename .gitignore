@@ -16,3 +16,6 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Built installers - distribute via GitHub Releases
+public/downloads/*.exe
