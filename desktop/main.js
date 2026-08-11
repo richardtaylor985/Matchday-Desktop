@@ -64,6 +64,36 @@ function writeUserConfig(value) {
   fs.writeFileSync(userConfigPath(), JSON.stringify(value, null, 2), "utf8");
 }
 
+const liveDesktopLogPath = () => path.join(app.getPath("userData"), "live-desktop.log");
+
+function wallpaperDiagnostic(event, details = {}) {
+  try {
+    const config = readUserConfig();
+    const row = {
+      timestamp: new Date().toISOString(),
+      event,
+      pid: process.pid,
+      ppid: process.ppid,
+      execPath: process.execPath,
+      argv: process.argv,
+      selectedClub: config.selectedClub || null,
+      wallpaperPid: config.wallpaperPid || null,
+      rendererClub: dynamicWallpaperClub || null,
+      rendererUrl:
+        dynamicWallpaperWindow && !dynamicWallpaperWindow.isDestroyed()
+          ? dynamicWallpaperWindow.webContents.getURL()
+          : null,
+      ...details
+    };
+    fs.mkdirSync(path.dirname(liveDesktopLogPath()), { recursive: true });
+    fs.appendFileSync(liveDesktopLogPath(), `${JSON.stringify(row)}\n`, "utf8");
+    console.log("WALLPAPER DIAGNOSTIC:", row);
+  } catch (error) {
+    console.error("Unable to write wallpaper diagnostic:", error);
+  }
+}
+
+
 function installedScrPath() {
   return path.join(path.dirname(process.execPath), "Matchday Desktop.scr");
 }
@@ -150,6 +180,10 @@ function registerIntegrationIpc() {
       event.sender.id === dynamicWallpaperWindow.webContents.id
     ) {
       if (current.selectedClub !== normalized) {
+        wallpaperDiagnostic("stale-renderer-club-blocked", {
+          attemptedClub: normalized,
+          nativeClub: current.selectedClub
+        });
         console.warn(`Ignored stale wallpaper club "${normalized}"; native club is "${current.selectedClub}".`);
       }
       dynamicWallpaperClub = current.selectedClub || dynamicWallpaperClub;
@@ -162,6 +196,11 @@ function registerIntegrationIpc() {
 
     const next = { ...current, selectedClub: normalized };
     writeUserConfig(next);
+    wallpaperDiagnostic("native-club-changed", {
+      previousClub: current.selectedClub || null,
+      newClub: normalized,
+      senderId: event.sender.id
+    });
 
     // A genuine club change from the visible app should refresh an existing
     // wallpaper renderer immediately. Never reload the renderer that sent the
@@ -393,7 +432,7 @@ async function scheduleNextDynamicWallpaperRefresh() {
 
   dynamicWallpaperTimer = setTimeout(async () => {
     try {
-      await captureAndApplyDynamicWallpaper();
+      await captureAndApplyDynamicWallpaper("renderer-initial-load");
     } catch (error) {
       console.error("Dynamic wallpaper refresh failed:", error?.stack || error);
     } finally {
@@ -439,18 +478,20 @@ async function synchronizeDynamicWallpaperClub({ force = false } = {}) {
   if (!force && dynamicWallpaperClub === selectedClub) return false;
 
   dynamicWallpaperClub = selectedClub;
+  wallpaperDiagnostic("club-synchronize", { force, targetClub: selectedClub });
   console.log(`Synchronizing Dynamic Wallpaper club: ${selectedClub}`);
   await dynamicWallpaperWindow.loadURL(hostedUrl({ wallpaper: true }));
   return true;
 }
 
-async function captureAndApplyDynamicWallpaper() {
+async function captureAndApplyDynamicWallpaper(trigger = "unspecified") {
   if (!dynamicWallpaperWindow || dynamicWallpaperWindow.isDestroyed()) return;
   if (wallpaperRefreshInProgress) {
     console.log("Dynamic wallpaper refresh skipped; refresh already in progress.");
     return;
   }
   wallpaperRefreshInProgress = true;
+  wallpaperDiagnostic("capture-start", { trigger });
 
   try {
   const display = screen.getPrimaryDisplay();
@@ -614,6 +655,10 @@ async function captureAndApplyDynamicWallpaper() {
 
   console.log("Dynamic wallpaper refreshed:", outputPath);
   if (result) console.log("Wallpaper setter:", result);
+  wallpaperDiagnostic("capture-applied", { trigger, outputPath, setterResult: result || null });
+  } catch (error) {
+    wallpaperDiagnostic("capture-failed", { trigger, error: String(error?.stack || error) });
+    throw error;
   } finally {
     wallpaperRefreshInProgress = false;
   }
@@ -648,7 +693,7 @@ function createDynamicWallpaperRenderer() {
   dynamicWallpaperWindow.webContents.once("did-finish-load", async () => {
     try {
       updateIntegrationConfig({ wallpaperPid: process.pid });
-      await captureAndApplyDynamicWallpaper();
+      await captureAndApplyDynamicWallpaper("scheduled-refresh");
       await scheduleNextDynamicWallpaperRefresh();
 
       console.log("Matchday Dynamic Wallpaper active with adaptive refresh.");
@@ -809,6 +854,13 @@ function createWindow({ fullScreen = false, kiosk = false, settings = false } = 
 
 app.whenReady().then(async () => {
   console.log("Matchday Desktop mode:", mode);
+  if (isDynamicWallpaperMode) {
+    wallpaperDiagnostic("process-ready", {
+      ownsWallpaperInstanceLock,
+      mode,
+      packaged: app.isPackaged
+    });
+  }
 
   if (isUninstallCleanup) {
     await runUninstallCleanup();
@@ -820,10 +872,11 @@ app.whenReady().then(async () => {
 
   app.on("second-instance", async () => {
     if (!isDynamicWallpaperMode) return;
+    wallpaperDiagnostic("second-instance-signal");
     console.log("Duplicate wallpaper launch redirected to current owner.");
     try {
       await synchronizeDynamicWallpaperClub({ force: true });
-      await captureAndApplyDynamicWallpaper();
+      await captureAndApplyDynamicWallpaper("duplicate-instance");
       await scheduleNextDynamicWallpaperRefresh();
     } catch (error) {
       console.error("Duplicate-instance wallpaper synchronization failed:", error?.stack || error);
@@ -832,6 +885,7 @@ app.whenReady().then(async () => {
 
   powerMonitor.on("resume", async () => {
     if (!isDynamicWallpaperMode) return;
+    wallpaperDiagnostic("windows-resume-detected");
     console.log("Windows resumed; synchronizing wallpaper from native configuration.");
     try {
       if (dynamicWallpaperTimer) {
@@ -839,7 +893,7 @@ app.whenReady().then(async () => {
         dynamicWallpaperTimer = null;
       }
       await synchronizeDynamicWallpaperClub({ force: true });
-      await captureAndApplyDynamicWallpaper();
+      await captureAndApplyDynamicWallpaper("windows-resume");
       await scheduleNextDynamicWallpaperRefresh();
     } catch (error) {
       console.error("Resume wallpaper synchronization failed:", error?.stack || error);
@@ -849,15 +903,15 @@ app.whenReady().then(async () => {
 
   screen.on("display-added", () => {
     console.log("Display added; dynamic wallpaper geometry will refresh.");
-    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper().catch(console.error);
+    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper("display-added").catch(console.error);
   });
   screen.on("display-removed", () => {
     console.log("Display removed; dynamic wallpaper geometry will refresh.");
-    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper().catch(console.error);
+    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper("display-removed").catch(console.error);
   });
   screen.on("display-metrics-changed", () => {
     console.log("Display metrics changed; dynamic wallpaper geometry will refresh.");
-    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper().catch(console.error);
+    if (isDynamicWallpaperMode) captureAndApplyDynamicWallpaper("display-metrics-changed").catch(console.error);
   });
 
   if (isDynamicWallpaperMode) {
